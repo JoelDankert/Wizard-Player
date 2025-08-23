@@ -76,3 +76,30 @@ html,body{
 .wait-summary{width:100%}
 .wait-summary.hidden{display:none}
 .wait-summary h3{margin:6px 0 6px}
+
+#layout {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+}
+
+#mainView {
+  flex: 0 0 70%;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+#scoresPanel {
+  flex: 0 0 30%;
+  border-left: 1px solid #e9eef5;
+  background: var(--card);
+  padding: 12px;
+  box-shadow: var(--shadow);
+  overflow-y: auto;
+}
+
+#scoresPanel h2 {
+  margin: 0 0 8px;
+  font-size: 1.2rem;
+  font-weight: 800;
+}

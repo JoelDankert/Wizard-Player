@@ -7,12 +7,27 @@
   <link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body>
-  <!-- Sanfter Titel, kein Overlap -->
-  <div id="cardsHeader"><span class="label">Karten:</span> <span id="cards">–</span></div>
+  <div id="layout">
+    <div id="mainView">
+      <!-- Sanfter Titel, kein Overlap -->
+      <div id="cardsHeader"> <span id="cards">–</span></div>
 
-  <main class="container">
-    <section id="players" class="grid" aria-live="polite" aria-atomic="true"></section>
-  </main>
+      <main class="container">
+        <section id="players" class="grid" aria-live="polite" aria-atomic="true"></section>
+      </main>
+    </div>
+
+    <!-- New permanent scores panel -->
+    <aside id="scoresPanel">
+      <h2>Stand</h2>
+      <table class="table">
+          <thead>
+              <tr><th>#</th><th>Spieler</th><th>Gesamt</th></tr>
+          </thead>
+          <tbody id="scoresBody"></tbody>
+      </table>
+    </aside>
+  </div>
 
   <!-- Vollflächiger Event-Banner (queued) -->
   <div id="eventBanner" class="banner hidden">

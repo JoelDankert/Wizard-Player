@@ -2,6 +2,7 @@ import os, threading, time, json
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlsplit
 from pathlib import Path
+import time
 
 # --- SCORING ---
 OFF_PENALTY = 10
@@ -25,6 +26,7 @@ WEB_STATE = {
     "modal": None,          # {"kind":"totals","items":[{place,name,score}]}
     "wait": True,           # Start: warten bis erste Eingabe
     "last_round": None,     # {"items":[{place,name,round_score,total}]}
+    "totals": [],           # persistente Totals für Always-on
 }
 _state_lock = threading.Lock()
 _event_seq = 0
@@ -33,19 +35,14 @@ _event_seq = 0
 def _ensure_players_for_web(players):
     out = []
     for p in players:
-        if not isinstance(p, (list, tuple)) or len(p) < 2: continue
-        out.append({"pref": p[0], "name": p[1]})
+        if not isinstance(p, (list, tuple)) or len(p) < 2:
+            continue
+        pref = str(p[0])
+        name = str(p[1]).strip()
+        out.append({"pref": pref, "name": name})
     return out
 
 def score_round_per_player(goals, reached):
-    """
-    Finale Rundenscores:
-      - exakter Treffer:  r == g
-          * g == 0  -> +HIT_BONUS (z.B. +20)
-          * g > 0   -> r*POINT_BONUS + HIT_BONUS
-      - darunter:        r < g  -> -(g-r)*OFF_PENALTY
-      - darüber:         r > g  -> -(r-g)*OFF_PENALTY
-    """
     scores = []
     for g, r in zip(goals, reached):
         if r == g:
@@ -61,14 +58,13 @@ def score_round_per_player(goals, reached):
     return scores
 
 def score_preview_with_bonus(goals, reached):
-    # Vorschau *immer* mit +o-Bonus, auch 0/0 => +20 (unabhängig von any_activity)
     scores = []
     for g, r in zip(goals, reached):
         if r < g:
             scores.append(-(g - r) * OFF_PENALTY)
         elif r == g:
             if g == 0:
-                scores.append(HIT_BONUS)           # 0/0 => +20
+                scores.append(HIT_BONUS)
             else:
                 scores.append(r * POINT_BONUS + HIT_BONUS)
         else:
@@ -107,13 +103,23 @@ def set_last_round_summary(items_or_none):
     with _state_lock:
         WEB_STATE["last_round"] = items_or_none
 
+def set_totals(players, totals_list):
+    with _state_lock:
+        WEB_STATE["totals"] = [
+            {"name": (name.strip() or pref.upper()), "score": int(score)}
+            for (pref, name), score in zip(players, totals_list)
+        ]
+
+def recompute_and_push_totals(name, players):
+    totals = compute_totals_from_file(name, players)
+    set_totals(players, totals)
+
 # ----- HTTP -----
 class WizHandler(BaseHTTPRequestHandler):
-    def log_message(self, format, *args): return  # keine Request-Logs
+    def log_message(self, format, *args): return
 
     def _send_bytes(self, code, data: bytes, ctype="text/plain; charset=utf-8"):
         self.send_response(code)
-        # Stärkere No-Cache Header
         self.send_header("Content-Type", ctype)
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.send_header("Pragma", "no-cache")
@@ -136,6 +142,8 @@ class WizHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = urlsplit(self.path).path
+        if path.startswith("/sounds/"):
+            return self._send_file(path.lstrip("/"))
         if path in ("/", "/index.html"): return self._send_file("index.html", "<h1>index.html fehlt</h1>")
         if path == "/styles.css": return self._send_file("styles.css", "/* styles.css fehlt */")
         if path == "/script.js": return self._send_file("script.js", "// script.js fehlt")
@@ -155,7 +163,7 @@ def start_web_server():
         httpd.serve_forever()
     threading.Thread(target=run, daemon=True).start()
 
-# ----- Terminal-Logik (unverändert für Bedienung) -----
+# ----- Terminal-Logik -----
 def clear(): os.system("clear")
 
 def open_wiz(name, ind):
@@ -224,7 +232,7 @@ def apply_game_step(players, gm, goals, reached):
     if idx == -1: return
     if not gm[1:].isdigit():
         reached[idx] += 1
-        push_event_token("{spieler} Stapel genommen", "gold", players, idx)
+        push_event_token("{spieler} nimmt den Stapel", "gold", players, idx)
         set_wait(False)
     else:
         goals[idx] = int(gm[1:])
@@ -240,7 +248,6 @@ def colorize_progress(s: str) -> str:
 def render(cards, players, goals, reached):
     update_web_state(cards, players, goals, reached)
     clear(); print(f"{WHITE}cards: {cards}{RESET}")
-    # Terminal-Ansicht bleibt wie gehabt
     asso = [[x, goals[i], reached[i]] for i, x in enumerate(players)]
     asso = sorted(asso, key=lambda x: x[1], reverse=True)
     lines = []
@@ -278,7 +285,7 @@ def show_totals_sorted(name, players):
     idxs = sorted(range(len(players)), key=lambda i: totals[i], reverse=True)
     print(f"{WHITE}{BOLD}totals:{RESET}")
     prev_score = None
-    place = 0  # dense ranking: 1,1,2,3
+    place = 0
     items = []
     for i in idxs:
         score = totals[i]
@@ -292,10 +299,10 @@ def show_totals_sorted(name, players):
         print(f"{WHITE}{line_left}{RESET}{score_color}{score}{RESET}")
         items.append({"place": place, "name": pname.strip() or pref.upper(), "score": score})
     set_modal_totals(items)
+    set_totals(players, totals)
+    set_wait(False)
 
-# ---- Waitscreen-Summary Builder ----
 def build_last_round_summary(name, players, round_scores):
-    # Totals nach Speichern der Runde
     totals = compute_totals_from_file(name, players)
     idxs = sorted(range(len(players)), key=lambda i: totals[i], reverse=True)
     by_index_round = {i: round_scores[i] for i in range(len(players))}
@@ -310,7 +317,7 @@ def build_last_round_summary(name, players, round_scores):
             "name": (pname.strip() or pref.upper()),
             "round_score": by_index_round.get(i, 0),
             "total": totals[i],
-        })    
+        })
     return {"items": items}
 
 # --- MAIN LOOP ---
@@ -320,9 +327,10 @@ def gameplay_loop(name):
     i = completed + 1
     goals, reached = build_initial_state(players)
 
-    set_wait(True)  # Start-Wartescreen
+    set_wait(True)
     set_last_round_summary(None)
     update_web_state(i, players, goals, reached)
+    recompute_and_push_totals(name, players)
 
     print(players)
     while 1:
@@ -331,16 +339,12 @@ def gameplay_loop(name):
         inp = inp_raw.lower()
 
         if inp == "next":
-            # Runde abschließen
             scores = score_round_per_player(goals, reached)
             toks = tokens_for_round(players, scores)
             append_game(name, toks)
-
-            # Waitscreen mit Placement + Rundenscore + Totals
             lr = build_last_round_summary(name, players, scores)
             set_last_round_summary(lr)
-
-            # Reset & nächste Runde
+            recompute_and_push_totals(name, players)
             goals, reached = build_initial_state(players)
             i += 1
             update_web_state(i, players, goals, reached)
@@ -350,25 +354,17 @@ def gameplay_loop(name):
         elif inp == "view":
             show_totals_sorted(name, players)
             input(f"{WHITE}(press enter to continue){RESET}")
-            clear_modal()  # Modal schließen, wenn im Terminal weitergemacht
+            clear_modal()
 
         elif inp == "exit":
             return
-
         else:
             apply_game_step(players, inp_raw, goals, reached)
             update_web_state(i, players, goals, reached)
 
 # --- ENTRY ---
-def start_web_server():
-    def run():
-        httpd = ThreadingHTTPServer((WEB_HOST, WEB_PORT), WizHandler)
-        print(f"{WHITE}Webview auf Port {WEB_PORT} aktiv.{RESET}")
-        httpd.serve_forever()
-    threading.Thread(target=run, daemon=True).start()
-
 start_web_server()
-
+time.sleep(1)
 act = input("action?\n> ").strip()
 if act == "n":
     init_game(input("title\n> ").strip())
