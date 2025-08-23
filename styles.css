@@ -1,0 +1,78 @@
+:root{
+  --bg:#f7f9fc; --card:#fff; --text:#1f2937; --muted:#9aa4b2;
+  --ok:#3bb07b; --over:#e57373; --under:#9aa4b2;
+  --gold:#ffda6a; --gray:#d3d8df;
+  --radius:18px; --shadow:0 8px 24px rgba(16,24,40,.06);
+}
+
+*{box-sizing:border-box}
+html,body{
+  margin:0; padding:0; background:var(--bg); color:var(--text);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Inter,"Helvetica Neue",Arial,"Noto Sans";
+  line-height:1.35
+}
+
+.container{max-width:1200px;margin:8px auto 40px;padding:0 16px}
+
+/* Karten-Titel (kein fixed → kein Overlap) */
+#cardsHeader{
+  position: static;
+  display:flex; align-items:center; justify-content:center;
+  margin:16px auto 8px;
+  font-weight:800; font-size:1.4rem; color:#000;
+}
+#cardsHeader .label{opacity:.65; margin-right:6px}
+
+/* Best-fit Grid – in Landscape passen ~4 Karten */
+.grid{
+  display:grid; gap:14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+/* Player card: Fokus n/k */
+.player{
+  background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+  padding:16px 16px 14px; display:flex; flex-direction:column; gap:10px
+}
+.player .name{font-weight:900; font-size:1.6rem}
+.bigfraction{font-weight:900; font-size:3.4rem; line-height:1}
+.bigfraction.under{color:var(--under)}
+.bigfraction.ok{color:var(--ok)}
+.bigfraction.over{color:var(--over)}
+.roundpoints{font-size:1rem; color:var(--muted); font-weight:700}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+
+/* Vollflächiger Event-Banner */
+.banner{position:fixed; inset:0; display:none; place-items:center; z-index:60}
+.banner.show{display:grid}
+.banner.gray{background:var(--gray)}
+.banner.gold{background:var(--gold)}
+.banner.red{background:#ffd6d6}
+.banner-inner{max-width:min(88vw,1200px); padding:12px}
+.banner-text{font-size:clamp(2.2rem, 6vw, 4.6rem); font-weight:900; text-align:center; color:#2b2f36}
+
+/* Totals-Modal (non-interactive) */
+.modal{position:fixed; inset:0; display:none; place-items:center; z-index:50;
+  background:rgba(17,24,39,.16); backdrop-filter:blur(4px)}
+.modal.show{display:grid}
+.modal-card{width:min(860px,95vw); max-height:80vh; overflow:auto; background:#fff;
+  border:1px solid #e9eef5; border-radius:18px; box-shadow:0 18px 48px rgba(16,24,40,.14);
+  padding:16px 18px}
+.modal-card h2{margin:4px 0 12px; font-size:1.4rem}
+.table{width:100%; border-collapse:collapse; font-size:1.5rem}
+.table thead th{text-align:left; color:var(--muted); font-weight:700; padding:8px 6px; border-bottom:1px solid #eef2f6}
+.table tbody td{padding:8px 6px; border-bottom:1px solid #f2f4f8}
+.badge-pos{font-weight:800; padding:4px 10px; border-radius:999px; background:#f2f5f9}
+
+/* Wartescreen */
+.wait{position:fixed; inset:0; display:none; place-items:center; z-index:80;
+  background:rgba(247,249,252,.9); backdrop-filter:blur(2px)}
+.wait.show{display:grid}
+.wait-card{background:#fff; border:1px solid #e9eef5; border-radius:22px; box-shadow:var(--shadow);
+  padding:26px; min-width:min(640px,96vw); display:grid; gap:14px; justify-items:center}
+.spinner{width:56px;height:56px;border-radius:50%;border:6px solid #e7ecf3;border-top-color:#7cc7a5;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wait-text{font-weight:800; font-size:1.1rem}
+.wait-summary{width:100%}
+.wait-summary.hidden{display:none}
+.wait-summary h3{margin:6px 0 6px}

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Wiz – Live</title>
+  <link rel="stylesheet" href="styles.css?v=7" />
+</head>
+<body>
+  <!-- Sanfter Titel, kein Overlap -->
+  <div id="cardsHeader"><span class="label">Karten:</span> <span id="cards">–</span></div>
+
+  <main class="container">
+    <section id="players" class="grid" aria-live="polite" aria-atomic="true"></section>
+  </main>
+
+  <!-- Vollflächiger Event-Banner (queued) -->
+  <div id="eventBanner" class="banner hidden">
+    <div class="banner-inner">
+      <div id="bannerText" class="banner-text"></div>
+    </div>
+  </div>
+
+  <!-- Totals (nicht-interaktiv) -->
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <!-- Wartescreen Start & zwischen Runden -->
+  <div id="wait" class="wait hidden" aria-hidden="true">
+    <div class="wait-card">
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="wait-text">Nächste Runde beginnt bald...</div>
+      <div id="waitSummary" class="wait-summary hidden">
+        <h3>Stand:</h3>
+        <table class="table">
+          <thead>
+            <tr><th>#</th><th>Spieler</th><th>Runde</th><th>Gesamt</th></tr>
+          </thead>
+          <tbody id="waitBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js?v=7"></script>
+</body>
+</html>
