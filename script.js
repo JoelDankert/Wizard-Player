@@ -54,37 +54,48 @@ function nameKey(s){
     return normalizeName(s).toLowerCase();
 }
 
-/* ————— Central standings renderer ————— */
 function renderStandingsTable(targetEl, rows, {
     showRound = false,
     title = null,
 } = {}) {
     const isTbody = targetEl && targetEl.tagName && targetEl.tagName.toUpperCase() === "TBODY";
 
-    // Gather round scores if the "Runde" column is shown
-    let roundScores = [];
-    if (showRound && Array.isArray(rows) && rows.length) {
-        roundScores = rows.map(r => Number(r.round_score)).filter(v => Number.isFinite(v));
-    }
+    // Collect scores
+    const roundScores = (Array.isArray(rows) ? rows : [])
+        .map(r => Number(r.round_score))
+        .filter(Number.isFinite);
 
-    // Compute min/max and bottom-30% threshold for '?'
+    const totalScores = (Array.isArray(rows) ? rows : [])
+        .map(r => Number(r.total ?? r.score))
+        .filter(Number.isFinite);
+
+    // Round-score stats (for ⇑/⇓ and bottom 30%)
     let maxRoundScore = null, minRoundScore = null, bottom30Threshold = null;
-    if (roundScores.length) {
+    if (showRound && roundScores.length) {
         const sorted = [...roundScores].sort((a, b) => a - b);
         minRoundScore = sorted[0];
         maxRoundScore = sorted[sorted.length - 1];
-        const idx = Math.max(0, Math.floor(sorted.length * 0.3) - 1);
-        bottom30Threshold = sorted[Math.min(idx, sorted.length - 1)];
+        const idxBottom = Math.max(0, Math.floor(sorted.length * 0.3) - 1);
+        bottom30Threshold = sorted[Math.min(idxBottom, sorted.length - 1)];
     }
-    function buildRow(row, totalRows) {
+
+    // Total-score top 50% threshold (median cutoff)
+    let top50TotalThreshold = null;
+    if (totalScores.length) {
+        const sortedT = [...totalScores].sort((a, b) => a - b);
+        const idxTop50 = Math.floor(sortedT.length * 0.5); // start of top-half
+        top50TotalThreshold = sortedT[Math.min(idxTop50, sortedT.length - 1)];
+    }
+
+    function buildRow(row) {
         const tr = el("tr");
 
-        // Place
+        // Place (visual only)
         const pos = el("td");
         pos.append(el("span", "badge-pos", String(row.place ?? "")));
         tr.append(pos);
 
-        // Name + indicators (only: ⤻, ⤵, ⇅)
+        // Name + indicators
         const nameText = normalizeName(row.name ?? "");
         const nameCell = el("td", null, nameText);
 
@@ -93,19 +104,22 @@ function renderStandingsTable(targetEl, rows, {
 
         if (showRound) {
             const v = Number(row.round_score);
+            const totalV = Number(row.total ?? row.score);
+
             if (Number.isFinite(v)) {
-                // Score field indicators
+                // Score cell indicators
                 if (v === maxRoundScore && v > 0) scoreIndicators.push("⇑");
                 if (v === minRoundScore && v < 0) scoreIndicators.push("⇓");
 
-                // Name field indicators
-                // if (v === 20) nameIndicators.push("⤻");
-                if (bottom30Threshold != null && v <= bottom30Threshold) {
-                    const total = totalRows || rows.length || 1;
-                    const top50Limit = Math.ceil(total / 2);
-                    if (Number(row.place) && Number(row.place) <= top50Limit && v < 0) {
-                        nameIndicators.push("⇅");
-                    }
+                // ⇅ shown ONLY when: total in top 50% AND round in bottom 30%
+                if (
+                    bottom30Threshold != null &&
+                    top50TotalThreshold != null &&
+                    v <= bottom30Threshold &&
+                    Number.isFinite(totalV) &&
+                    totalV >= top50TotalThreshold
+                ) {
+                    nameIndicators.push("⇅");
                 }
             }
 
@@ -126,16 +140,12 @@ function renderStandingsTable(targetEl, rows, {
         if (showRound) {
             const v = Number(row.round_score ?? 0);
             const roundScoreTd = el("td", "mono", `${v >= 0 ? "+" : ""}${v}`);
-            if (v > 0) {
-                roundScoreTd.style.color = "#146414";
-            } else if (v < 0) {
-                roundScoreTd.style.color = "#8a1212";
-            }
+            if (v > 0) roundScoreTd.style.color = "#146414";
+            else if (v < 0) roundScoreTd.style.color = "#8a1212";
 
             if (scoreIndicators.length) {
                 roundScoreTd.textContent += " " + scoreIndicators.join(" ");
             }
-
             tr.append(roundScoreTd);
         }
 
@@ -145,15 +155,13 @@ function renderStandingsTable(targetEl, rows, {
         return tr;
     }
 
-    // TBODY target: clear and append rows
+    // Render
     if (isTbody) {
         targetEl.textContent = "";
-        const totalRows = rows.length;
-        for (const r of rows) targetEl.append(buildRow(r, totalRows));
+        for (const r of rows) targetEl.append(buildRow(r));
         return;
     }
 
-    // Full table target (container)
     targetEl.textContent = "";
     if (title) targetEl.append(el("h2", null, title));
 
@@ -168,8 +176,7 @@ function renderStandingsTable(targetEl, rows, {
     table.append(thead);
 
     const tbody = el("tbody");
-    const totalRows = rows.length;
-    for (const r of rows) tbody.append(buildRow(r, totalRows));
+    for (const r of rows) tbody.append(buildRow(r));
     table.append(tbody);
 
     targetEl.append(table);

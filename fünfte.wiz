@@ -1,0 +1,16 @@
+x Jöl
+i JIngrid
+j George
+c Clari
+s Sexfried
+r Rick
+g Gabs
+
+x-10 i20 j20 c20 s30 r20 g20
+x-10 i20 j20 c20 s20 r20 g30
+x30 i-10 j20 c30 s-10 r20 g30
+x-10 i20 j20 c20 s20 r-10 g40
+x30 i-10 j-10 c30 s20 r20 g-10
+x40 i-10 j30 c20 s20 r20 g40
+x30 i-10 j-10 c40 s20 r20 g20
+x-10 i-20 j20 c-10 s20 r-10 g20
