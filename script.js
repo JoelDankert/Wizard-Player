@@ -76,7 +76,6 @@ function renderStandingsTable(targetEl, rows, {
         const idx = Math.max(0, Math.floor(sorted.length * 0.3) - 1);
         bottom30Threshold = sorted[Math.min(idx, sorted.length - 1)];
     }
-
     function buildRow(row, totalRows) {
         const tr = el("tr");
 
@@ -85,24 +84,27 @@ function renderStandingsTable(targetEl, rows, {
         pos.append(el("span", "badge-pos", String(row.place ?? "")));
         tr.append(pos);
 
-        // Name + indicators
+        // Name + indicators (only: ⤻, ⤵, ⇅)
         const nameText = normalizeName(row.name ?? "");
         const nameCell = el("td", null, nameText);
 
-        const indicators = [];
+        const nameIndicators = [];
+        const scoreIndicators = [];
+
         if (showRound) {
             const v = Number(row.round_score);
             if (Number.isFinite(v)) {
-                if (v === maxRoundScore) indicators.push("⇑");   // highest round
-                if (v === minRoundScore) indicators.push("⇓");   // lowest round
-                if (v === 20)            indicators.push("⤻");   // exactly 20
+                // Score field indicators
+                if (v === maxRoundScore && v > 0) scoreIndicators.push("⇑");
+                if (v === minRoundScore && v < 0) scoreIndicators.push("⇓");
 
-                // bottom 30% round but top 50% placement
+                // Name field indicators
+                // if (v === 20) nameIndicators.push("⤻");
                 if (bottom30Threshold != null && v <= bottom30Threshold) {
                     const total = totalRows || rows.length || 1;
                     const top50Limit = Math.ceil(total / 2);
-                    if (Number(row.place) && Number(row.place) <= top50Limit) {
-                        indicators.push("?");
+                    if (Number(row.place) && Number(row.place) <= top50Limit && v < 0) {
+                        nameIndicators.push("⇅");
                     }
                 }
             }
@@ -111,24 +113,29 @@ function renderStandingsTable(targetEl, rows, {
             const g = Number(row.goal);
             const r = Number(row.reached);
             if (Number.isFinite(g) && Number.isFinite(r) && g < r) {
-                indicators.push("⤵");
+                nameIndicators.push("⤵");
             }
         }
 
-        if (indicators.length) {
-            nameCell.textContent += " " + indicators.join(" ");
+        if (nameIndicators.length) {
+            nameCell.textContent += " " + nameIndicators.join(" ");
         }
         tr.append(nameCell);
 
-        // Round score column with color
+        // Round score cell
         if (showRound) {
             const v = Number(row.round_score ?? 0);
             const roundScoreTd = el("td", "mono", `${v >= 0 ? "+" : ""}${v}`);
             if (v > 0) {
-                roundScoreTd.style.color = "#146414"; // dark green
+                roundScoreTd.style.color = "#146414";
             } else if (v < 0) {
-                roundScoreTd.style.color = "#8a1212"; // dark red
+                roundScoreTd.style.color = "#8a1212";
             }
+
+            if (scoreIndicators.length) {
+                roundScoreTd.textContent += " " + scoreIndicators.join(" ");
+            }
+
             tr.append(roundScoreTd);
         }
 
