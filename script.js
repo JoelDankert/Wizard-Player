@@ -18,7 +18,6 @@ const sounds = {
     roundEnd: new Audio("sounds/roundend.mp3"), // Runde abgeschlossen
 };
 
-
 let lastSeq = 0;
 let initialized = false;
 
@@ -29,7 +28,6 @@ let hideTimer = null;
 
 /* ————— Helpers ————— */
 
-// kleine Helper damit es bei mehreren Events kurz nacheinander nicht "verschluckt" wird
 function playSound(name, volume = 1.0) {
     const s = sounds[name];
     if (s) {
@@ -56,6 +54,119 @@ function nameKey(s){
     return normalizeName(s).toLowerCase();
 }
 
+/* ————— Central standings renderer ————— */
+function renderStandingsTable(targetEl, rows, {
+    showRound = false,
+    title = null,
+} = {}) {
+    const isTbody = targetEl && targetEl.tagName && targetEl.tagName.toUpperCase() === "TBODY";
+
+    // Gather round scores if the "Runde" column is shown
+    let roundScores = [];
+    if (showRound && Array.isArray(rows) && rows.length) {
+        roundScores = rows.map(r => Number(r.round_score)).filter(v => Number.isFinite(v));
+    }
+
+    // Compute min/max and bottom-30% threshold for '?'
+    let maxRoundScore = null, minRoundScore = null, bottom30Threshold = null;
+    if (roundScores.length) {
+        const sorted = [...roundScores].sort((a, b) => a - b);
+        minRoundScore = sorted[0];
+        maxRoundScore = sorted[sorted.length - 1];
+        const idx = Math.max(0, Math.floor(sorted.length * 0.3) - 1);
+        bottom30Threshold = sorted[Math.min(idx, sorted.length - 1)];
+    }
+
+    function buildRow(row, totalRows) {
+        const tr = el("tr");
+
+        // Place
+        const pos = el("td");
+        pos.append(el("span", "badge-pos", String(row.place ?? "")));
+        tr.append(pos);
+
+        // Name + indicators
+        const nameText = normalizeName(row.name ?? "");
+        const nameCell = el("td", null, nameText);
+
+        const indicators = [];
+        if (showRound) {
+            const v = Number(row.round_score);
+            if (Number.isFinite(v)) {
+                if (v === maxRoundScore) indicators.push("⇑");   // highest round
+                if (v === minRoundScore) indicators.push("⇓");   // lowest round
+                if (v === 20)            indicators.push("⤻");   // exactly 20
+
+                // bottom 30% round but top 50% placement
+                if (bottom30Threshold != null && v <= bottom30Threshold) {
+                    const total = totalRows || rows.length || 1;
+                    const top50Limit = Math.ceil(total / 2);
+                    if (Number(row.place) && Number(row.place) <= top50Limit) {
+                        indicators.push("?");
+                    }
+                }
+            }
+
+            // ⤵ underestimated: goal < reached
+            const g = Number(row.goal);
+            const r = Number(row.reached);
+            if (Number.isFinite(g) && Number.isFinite(r) && g < r) {
+                indicators.push("⤵");
+            }
+        }
+
+        if (indicators.length) {
+            nameCell.textContent += " " + indicators.join(" ");
+        }
+        tr.append(nameCell);
+
+        // Round score column with color
+        if (showRound) {
+            const v = Number(row.round_score ?? 0);
+            const roundScoreTd = el("td", "mono", `${v >= 0 ? "+" : ""}${v}`);
+            if (v > 0) {
+                roundScoreTd.style.color = "#146414"; // dark green
+            } else if (v < 0) {
+                roundScoreTd.style.color = "#8a1212"; // dark red
+            }
+            tr.append(roundScoreTd);
+        }
+
+        // Total
+        tr.append(el("td", "mono", String(row.total ?? row.score ?? 0)));
+
+        return tr;
+    }
+
+    // TBODY target: clear and append rows
+    if (isTbody) {
+        targetEl.textContent = "";
+        const totalRows = rows.length;
+        for (const r of rows) targetEl.append(buildRow(r, totalRows));
+        return;
+    }
+
+    // Full table target (container)
+    targetEl.textContent = "";
+    if (title) targetEl.append(el("h2", null, title));
+
+    const table = el("table", "table");
+    const thead = el("thead");
+    const thr = el("tr");
+    thr.append(el("th", null, "#"));
+    thr.append(el("th", null, "Spieler"));
+    if (showRound) thr.append(el("th", null, "Runde"));
+    thr.append(el("th", null, "Gesamt"));
+    thead.append(thr);
+    table.append(thead);
+
+    const tbody = el("tbody");
+    const totalRows = rows.length;
+    for (const r of rows) tbody.append(buildRow(r, totalRows));
+    table.append(tbody);
+
+    targetEl.append(table);
+}
 /* ————— Render ————— */
 function render(state){
     // Karten-Header + Stiche-Anzeige
@@ -63,7 +174,7 @@ function render(state){
     const cardsVal = state.cards ?? "–";
     let text = `Karten: ${cardsVal}`;
     if (state.cards && state.goals && state.goals.length) {
-      text += `&nbsp;&nbsp;&nbsp;Stiche: ${totalGoals}`;
+        text += `&nbsp;&nbsp;&nbsp;Stiche: ${totalGoals}`;
     }
     $cards.innerHTML = text;
 
@@ -78,7 +189,7 @@ function render(state){
     // Preview-Score (inkl. +o-Bonus, auch 0/0 => +20) kommt direkt vom Backend im Feld preview_scores
     const preview = state.preview_scores || [];
 
-    // Render
+    // Render Player cards
     $players.textContent = "";
     for (let idx = 0; idx < players.length; idx++){
         const p = players[idx];
@@ -107,15 +218,23 @@ function render(state){
         const lr = state.last_round;
         if (lr && Array.isArray(lr.items) && lr.items.length){
             $waitSummary.classList.remove("hidden");
-            $waitBody.textContent = "";
-            for (const row of lr.items){
-                const tr = el("tr");
-                const pos = el("td"); pos.append(el("span", "badge-pos", `${row.place}`)); tr.append(pos);
-                tr.append(el("td", null, normalizeName(row.name)));
-                tr.append(el("td", "mono", `${row.round_score >= 0 ? "+" : ""}${row.round_score}`));
-                tr.append(el("td", "mono", `${row.total}`));
-                $waitBody.append(tr);
+
+            // Build name → { goal, reached } for last round from current state arrays
+            const roundLookup = {};
+            if (Array.isArray(state.players)) {
+                (state.players || []).forEach((p, i) => {
+                    const display = normalizeName(p.name) || (p.pref || "").toUpperCase();
+                    roundLookup[nameKey(display)] = {
+                        goal: (state.goals || [])[i],
+                        reached: (state.reached || [])[i]
+                    };
+                });
             }
+            renderStandingsTable($waitBody, lr.items, {
+                showRound: true,
+                roundLookup
+            });
+
         } else {
             $waitSummary.classList.add("hidden");
         }
@@ -123,46 +242,28 @@ function render(state){
         $wait.classList.remove("show");
     }
 
-    // Totals-Modal (nur Totals, kein Rundenscore)
+    // Totals-Modal (nur Totals, kein Rundenscore) — render via central function
     if (state.modal && state.modal.kind === "totals"){
-        renderTotalsModal(state.modal);
+        // Build rows from computeStandings using modal as source
+        const modalRows = computeStandings({
+            players: [],        // leeres players -> computeStandings nimmt modal.items
+            modal: state.modal
+        });
+        renderStandingsTable($modalContent, modalRows, {
+            showRound: false,
+            title: "Stand:",
+            podiumColors: true
+        });
         $modal.classList.add("show");
     } else {
         $modal.classList.remove("show");
     }
 
-    // Always-on scores panel (einheitliche Logik aus allen Quellen)
-    renderScores(computeStandings(state));
-}
-
-function renderTotalsModal(modal){
-    $modalContent.textContent = "";
-    const title = el("h2", null, "Totals");
-    const table = el("table", "table");
-    const thead = el("thead");
-    const thr = el("tr");
-    thr.append(el("th", null, "#"));
-    thr.append(el("th", null, "Spieler"));
-    thr.append(el("th", null, "Totals"));
-    thead.append(thr);
-    table.append(thead);
-
-    const tbody = el("tbody");
-    for (const row of (modal.items || [])){
-        const tr = el("tr");
-        const pos = el("td"); pos.append(el("span", "badge-pos", `${row.place}`)); tr.append(pos);
-        tr.append(el("td", null, normalizeName(row.name)));
-        tr.append(el("td", "mono", `${row.score}`));
-        tbody.append(tr);
-    }
-    table.append(tbody);
-    $modalContent.append(title, table);
-
-    // ⬅️ Workaround bleibt: sofort auch die rechte Panel-Tabelle neu zeichnen
-    renderScores(computeStandings({
-        players: [],        // leeres players -> computeStandings nimmt modal.items
-        modal
-    }));
+    // Always-on scores panel (einheitliche Logik aus allen Quellen) — central renderer to tbody
+    renderStandingsTable($scoresBody, computeStandings(state), {
+        showRound: false,
+        podiumColors: true
+    });
 }
 
 function computeStandings(state){
@@ -219,41 +320,55 @@ function computeStandings(state){
     return rows;
 }
 
-function renderScores(rows){
-    if (!$scoresBody) return;
-    $scoresBody.textContent = "";
-    for (const row of rows){
-        const tr = el("tr");
-        const pos = el("td"); pos.append(el("span", "badge-pos", String(row.place))); tr.append(pos);
-        tr.append(el("td", null, row.name));
-        tr.append(el("td", "mono", String(row.total)));
-        $scoresBody.append(tr);
-    }
-}
-
-/* —— Vollscreen-Banner mit Queue —— */
-function showNextBanner(){
+function showNextBanner() {
     if (bannerOpen || eventQueue.length === 0) return;
     const e = eventQueue.shift();
+
+    // Special case: don't show the banner for "Nächste Runde gestartet"
+    if (/Nächste Runde gestartet/i.test(e.text)) {
+        playSound("roundEnd", 0.7);
+        setTimeout(showNextBanner, 50);
+        return;
+    }
+
     bannerOpen = true;
+    const startTime = Date.now();
 
     $banner.className = "banner show " + (e.color || "gray");
     $bannerText.textContent = e.text;
 
     if (/zielt/i.test(e.text)) {
-        playSound("goal", 1);
+        const match = e.text.match(/\d+/);
+        const count = match ? parseInt(match[0], 10) : 0;
+        for (let i = 0; i < count; i++) {
+            setTimeout(() => {
+                playSound("goal", 1);
+            }, i * 100); // 100ms stagger for strong overlap
+        }
     } else if (/nimmt den Stapel/i.test(e.text)) {
         playSound("stack", 1);
-    } else if (/Nächste Runde gestartet/i.test(e.text)) {
-        playSound("roundEnd", 0.2);
     }
 
-    if (hideTimer){ clearTimeout(hideTimer); }
-    hideTimer = setTimeout(()=>{
-        $banner.className = "banner hidden";
-        bannerOpen = false;
-        setTimeout(showNextBanner, 50);
-    }, 3000);
+    if (hideTimer) clearTimeout(hideTimer);
+
+    hideTimer = setTimeout(function cycle() {
+        const elapsed = Date.now() - startTime;
+
+        if (eventQueue.length > 0 && elapsed >= 1000) {
+            // Queue waiting, min 1s shown → move on instantly
+            $banner.className = "banner hidden";
+            bannerOpen = false;
+            setTimeout(showNextBanner, 50);
+        } else if (eventQueue.length === 0 && elapsed < 3000) {
+            // Nothing waiting, keep banner until 3s
+            hideTimer = setTimeout(cycle, 100);
+        } else {
+            // 3s passed or no queue left → hide
+            $banner.className = "banner hidden";
+            bannerOpen = false;
+            setTimeout(showNextBanner, 50);
+        }
+    }, 1000); // first check after 1s
 }
 
 async function poll(){

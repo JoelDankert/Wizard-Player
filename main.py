@@ -302,7 +302,7 @@ def show_totals_sorted(name, players):
     set_totals(players, totals)
     set_wait(False)
 
-def build_last_round_summary(name, players, round_scores):
+def build_last_round_summary(name, players, round_scores, goals, reached):
     totals = compute_totals_from_file(name, players)
     idxs = sorted(range(len(players)), key=lambda i: totals[i], reverse=True)
     by_index_round = {i: round_scores[i] for i in range(len(players))}
@@ -315,8 +315,10 @@ def build_last_round_summary(name, players, round_scores):
         items.append({
             "place": place,
             "name": (pname.strip() or pref.upper()),
-            "round_score": by_index_round.get(i, 0),
-            "total": totals[i],
+            "round_score": int(by_index_round.get(i, 0)),
+            "total": int(totals[i]),
+            "goal": int(goals[i]) if i < len(goals) else 0,
+            "reached": int(reached[i]) if i < len(reached) else 0,
         })
     return {"items": items}
 
@@ -342,10 +344,10 @@ def gameplay_loop(name):
             scores = score_round_per_player(goals, reached)
             toks = tokens_for_round(players, scores)
             append_game(name, toks)
-            lr = build_last_round_summary(name, players, scores)
+            lr = build_last_round_summary(name, players, scores, goals, reached)  # ← pass goals & reached
             set_last_round_summary(lr)
             recompute_and_push_totals(name, players)
-            goals, reached = build_initial_state(players)
+            goals, reached = build_initial_state(players)  # reset AFTER summary creation
             i += 1
             update_web_state(i, players, goals, reached)
             set_wait(True)

@@ -53,7 +53,7 @@ html,body{
 
 /* Totals-Modal (non-interactive) */
 .modal{position:fixed; inset:0; display:none; place-items:center; z-index:50;
-  background:rgba(17,24,39,.16); backdrop-filter:blur(4px)}
+  background:transparent}
 .modal.show{display:grid}
 .modal-card{width:min(860px,95vw); max-height:80vh; overflow:auto; background:#fff;
   border:1px solid #e9eef5; border-radius:18px; box-shadow:0 18px 48px rgba(16,24,40,.14);
@@ -66,7 +66,7 @@ html,body{
 
 /* Wartescreen */
 .wait{position:fixed; inset:0; display:none; place-items:center; z-index:80;
-  background:rgba(247,249,252,.9); backdrop-filter:blur(2px)}
+  background:transparent}
 .wait.show{display:grid}
 .wait-card{background:#fff; border:1px solid #e9eef5; border-radius:22px; box-shadow:var(--shadow);
   padding:26px; min-width:min(640px,96vw); display:grid; gap:14px; justify-items:center}
