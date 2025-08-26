@@ -134,3 +134,65 @@ html,body{
   font-size: 3rem;
   line-height: 1;
 }
+.particles {
+  position: fixed;
+  left: 0; top: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 99999;
+}
+.particle {
+  position: absolute;
+  opacity: 0;
+  font-size: 3rem;
+  line-height: 1;
+}
+
+@keyframes zap {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    /* Zielweite pro Partikel über --dist */
+    transform: translateX(calc(var(--fromLeft, 1) * var(--dist) - var(--dist) / 2));
+    opacity: 0;
+  }
+}
+.wizard-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 6rem;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 8px black, 0 0 16px black;
+  z-index: 100000;
+  pointer-events: none;
+  white-space: nowrap;
+  width: auto;
+  animation: wizardFade 2s ease-out forwards;
+}
+
+@keyframes wizardFade {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  85% {
+    opacity: 1; 
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+}

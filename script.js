@@ -16,8 +16,9 @@ const sounds = {
     goal: new Audio("sounds/goal.mp3"),
     stack: new Audio("sounds/stack.mp3"),
     roundEnd: new Audio("sounds/roundend.mp3"),
-    applause: new Audio("sounds/applause.mp3"), 
-    sad: new Audio("sounds/sad.mp3"), 
+    applause: new Audio("sounds/applause.mp3"),
+    sad: new Audio("sounds/sad.mp3"),
+    wizard: new Audio("sounds/wizard.mp3"),   // NEU
 };
 
 let lastSeq = 0;
@@ -29,6 +30,42 @@ let bannerOpen = false;
 let hideTimer = null;
 
 /* ————— Helpers ————— */
+function triggerParticles(avatarEmoji) {
+    const overlay = document.createElement("div");
+    overlay.className = "wizard-overlay";
+    overlay.textContent = "⚡ WIZARD ⚡";
+    document.body.append(overlay);
+
+    setTimeout(() => overlay.remove(), 5000);
+
+    const container = document.createElement("div");
+    container.className = "particles";
+    document.body.append(container);
+
+    const count = 100;
+    for (let i = 0; i < count; i++) {
+        const p = document.createElement("div");
+        p.className = "particle";
+
+        // Zufällig Blitz oder Avatar
+        p.textContent = Math.random() < 0.5 ? "⚡" : (avatarEmoji || "⚡");
+        container.append(p);
+
+        const fromLeft = Math.random() < 0.5;
+        const startY = -10 + Math.random() * 120;   
+        const duration = 1.5 + Math.random() * 0.8; 
+        const delay = Math.random() * 0.8;         
+        const dist = 30 + Math.random() * 80;       
+
+        p.style.top = startY + "%";
+        p.style[fromLeft ? "left" : "right"] = "-80px";
+        p.style.setProperty("--fromLeft", fromLeft ? "1" : "0");
+        p.style.setProperty("--dist", dist + "vw");
+        p.style.animation = `zap ${duration}s ease-out ${delay}s forwards`;
+    }
+
+    setTimeout(() => container.remove(), 5000);
+}
 
 function playSound(name, volume = 1.0) {
     const s = sounds[name];
@@ -110,12 +147,12 @@ function renderStandingsTable(targetEl, rows, {
 
         const nameCell = el("td", null);
 
-if (avatar) {
-    // Emoji + forced double space + name
-    nameCell.textContent = avatar + "\u00A0\u00A0" + displayName;
-} else {
-    nameCell.textContent = displayName;
-}
+        if (avatar) {
+            // Emoji + forced double space + name
+            nameCell.textContent = avatar + "\u00A0\u00A0" + displayName;
+        } else {
+            nameCell.textContent = displayName;
+        }
         const nameIndicators = [];
         const scoreIndicators = [];
 
@@ -251,14 +288,14 @@ function render(state){
         // wrapper for fraction + roundpoints + avatar
         const box = el("div", "player-box");
 
-// stack fraction + roundpoints
-const stats = el("div", "stats");
-stats.append(el("div", `bigfraction ${fractionClass(p.goal, p.reached)}`, `${p.reached}/${p.goal}`));
-stats.append(el("div", "roundpoints mono", `${rp >= 0 ? "+" : ""}${rp}`));
+        // stack fraction + roundpoints
+        const stats = el("div", "stats");
+        stats.append(el("div", `bigfraction ${fractionClass(p.goal, p.reached)}`, `${p.reached}/${p.goal}`));
+        stats.append(el("div", "roundpoints mono", `${rp >= 0 ? "+" : ""}${rp}`));
 
-box.append(stats);
-if (avatar) box.append(el("div", "avatar", avatar));
-card.append(box);        $players.append(card);
+        box.append(stats);
+        if (avatar) box.append(el("div", "avatar", avatar));
+        card.append(box);        $players.append(card);
     }
     // Wartescreen
     if (state.wait){
@@ -372,7 +409,6 @@ function showNextBanner() {
     if (bannerOpen || eventQueue.length === 0) return;
     const e = eventQueue.shift();
 
-    // Special case: don't show the banner for "Nächste Runde gestartet"
     if (/Nächste Runde gestartet/i.test(e.text)) {
         playSound("roundEnd", 0.7);
         setTimeout(showNextBanner, 50);
@@ -380,68 +416,59 @@ function showNextBanner() {
     }
 
     bannerOpen = true;
-    const startTime = Date.now();
 
-    $banner.className = "banner show " + (e.color || "gray");
+    const renderBanner = () => {
+        const startTime = Date.now();
+        $banner.className = "banner show " + (e.color || "gray");
 
-    // --- extract emoji avatar if present at start ---
-    const emojiMatch = e.text.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u);
-    let avatar = null;
-    let msgText = e.text;
-    if (emojiMatch) {
-        avatar = emojiMatch[0];
-        msgText = e.text.slice(avatar.length).trim();
-    }
-
-    // Clear old content
-    $bannerText.textContent = "";
-    if (avatar) {
-        const avatarEl = el("div", "banner-avatar", avatar);
-        $bannerText.append(avatarEl);
-    }
-    const textEl = el("div", "banner-message", msgText);
-    $bannerText.append(textEl);
-
-    // --- Sounds ---
-    if (/zielt/i.test(e.text)) {
-        const match = e.text.match(/\d+/);
-        const count = match ? parseInt(match[0], 10) : 0;
-        for (let i = 0; i < count; i++) {
-            setTimeout(() => {
-                playSound("goal", 1);
-            }, i * 100);
+        // Avatar + Text
+        const emojiMatch = e.text.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u);
+        let avatar = null, msgText = e.text;
+        if (emojiMatch) {
+            avatar = emojiMatch[0];
+            msgText = e.text.slice(avatar.length).trim();
         }
-    } else if (/nimmt den Stapel/i.test(e.text)) {
-        playSound("stack", 1);
-    } else if (/Stiche erreicht/i.test(e.text)) {
-        
-        playSound("stack", 1);
-        playSound("applause", 0.2);
+        $bannerText.textContent = "";
+        if (avatar) $bannerText.append(el("div", "banner-avatar", avatar));
+        $bannerText.append(el("div", "banner-message", msgText));
 
-    } else if (/Stiche überschritten/i.test(e.text)) {
-
-        playSound("stack", 1);
-        playSound("sad", 0.05);
-
-    }
-
-    if (hideTimer) clearTimeout(hideTimer);
-
-    hideTimer = setTimeout(function cycle() {
-        const elapsed = Date.now() - startTime;
-
-        if (eventQueue.length > 0 && elapsed >= 1000) {
-            $banner.className = "banner hidden";
-            bannerOpen = false;
-            setTimeout(showNextBanner, 50);
-        } else if (eventQueue.length === 0 && elapsed < 3000) {
-            hideTimer = setTimeout(cycle, 100);
-        } else {
-            $banner.className = "banner hidden";
-            bannerOpen = false;
-            setTimeout(showNextBanner, 50);
+        if (/nimmt den Stapel/i.test(e.text)) playSound("stack", 1);
+        else if (/Stiche erreicht/i.test(e.text)) { playSound("stack",1); playSound("applause",0.2);}
+        else if (/Stiche überschritten/i.test(e.text)) { playSound("stack",1); playSound("sad",0.05);}
+        else if (/zielt/i.test(e.text)) {
+            const match = e.text.match(/\d+/);
+            const count = match ? parseInt(match[0], 10) : 0;
+            for (let i = 0; i < count; i++) setTimeout(() => playSound("goal",1), i*100);
         }
-    }, 1000);
+
+        if (hideTimer) clearTimeout(hideTimer);
+        hideTimer = setTimeout(function cycle() {
+            const elapsed = Date.now() - startTime;
+            if (eventQueue.length > 0 && elapsed >= 1000) {
+                $banner.className = "banner hidden";
+                bannerOpen = false;
+                setTimeout(showNextBanner, 50);
+            } else if (eventQueue.length === 0 && elapsed < 3000) {
+                hideTimer = setTimeout(cycle, 100);
+            } else {
+                $banner.className = "banner hidden";
+                bannerOpen = false;
+                setTimeout(showNextBanner, 50);
+            }
+        }, 1000);
+    };
+
+    if (e.particles) {
+        const emojiMatch = e.text.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u);
+        const avatarEmoji = emojiMatch ? emojiMatch[0] : null;
+
+        playSound("wizard", 1);
+        triggerParticles(avatarEmoji);
+
+        setTimeout(() => renderBanner(), 3000);
+    } else {
+        renderBanner();
+    }
 }
 
 async function poll(){

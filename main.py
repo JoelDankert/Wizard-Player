@@ -79,14 +79,19 @@ def update_web_state(cards, players, goals, reached):
         WEB_STATE["reached"] = list(reached)
         WEB_STATE["preview_scores"] = score_preview_with_bonus(goals, reached)
 
-def push_event(text, color="gray"):
+def push_event(text, color="gray", particles=False):
     global _event_seq
     with _state_lock:
         _event_seq += 1
-        WEB_STATE["events"].append({"seq": _event_seq, "text": text, "color": color, "ts": time.time()})
+        WEB_STATE["events"].append({
+            "seq": _event_seq,
+            "text": text,
+            "color": color,
+            "ts": time.time(),
+            "particles": particles
+        })
         if len(WEB_STATE["events"]) > 100:
             WEB_STATE["events"] = WEB_STATE["events"][-100:]
-
 def set_wait(active: bool):
     with _state_lock:
         WEB_STATE["wait"] = bool(active)
@@ -219,25 +224,30 @@ def push_event_token(template, color, players, idx):
     pname = players[idx][1].strip() or players[idx][0].upper()
     push_event(template.format(spieler=pname), color)
 
-
-
 def apply_game_step(players, gm, goals, reached):
     if not gm:
         return
 
-    if gm[0] == 'l':
-        idx = find_associating(players, gm, False)
+    # check auf "jj" (Partikel-Event)
+    particles = False
+    token = gm
+    if len(gm) >= 2 and gm[0] == gm[1]:
+        particles = True
+        token = gm[0] + gm[2:]   # doppeltes Prefix auf normales Kürzel reduzieren
+
+    if token[0] == 'l':
+        idx = find_associating(players, token, False)
         if idx != -1:
             reached[idx] -= 1
             push_event_token("{spieler} Punkt verloren", "red", players, idx)
             set_wait(False)
         return
 
-    idx = find_associating(players, gm, True)
+    idx = find_associating(players, token, True)
     if idx == -1:
         return
 
-    if not gm[1:].isdigit():
+    if not token[1:].isdigit():
         # Stapelaufnahme
         reached[idx] += 1
         g = goals[idx]
@@ -245,21 +255,20 @@ def apply_game_step(players, gm, goals, reached):
         pname = players[idx][1].strip() or players[idx][0].upper()
 
         if g > 0 and r == g:
-            push_event(f"{pname} hat die Stiche erreicht", "gold")
+            text = f"{pname} hat die Stiche erreicht"
         elif r > g:
-            push_event(f"{pname} hat die Stiche überschritten", "gold")
+            text = f"{pname} hat die Stiche überschritten"
         else:
-            push_event(f"{pname} nimmt den Stapel", "gold")
+            text = f"{pname} nimmt den Stapel"
 
+        push_event(text, "gold", particles=particles)   # <--- hier Flag setzen
         set_wait(False)
 
     else:
         # Zielansage
-        goals[idx] = int(gm[1:])
+        goals[idx] = int(token[1:])
         push_event_token("{spieler} zielt " + str(goals[idx]) + " Stiche an", "gray", players, idx)
         set_wait(False)
-
-
 
 def colorize_progress(s: str) -> str:
     s = s.replace("+o", f"{GREEN}+o{RESET}").replace("O ", f"{GREEN}O {RESET}") \
