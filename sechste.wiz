@@ -1,0 +1,16 @@
+x 🤖Joel
+i 🧚Ingrid
+j 🐗Jörg
+c 🐞Clari
+s 🐝Siggi
+r 🌎Ricky
+g 🥗Gabi
+
+x-10 i20 j20 c20 s30 r-10 g20
+x30 i20 j30 c20 s20 r20 g20
+x30 i20 j30 c20 s30 r20 g20
+x30 i20 j20 c-10 s-10 r-10 g20
+x30 i30 j20 c40 s30 r20 g20
+x40 i20 j30 c-10 s30 r30 g-10
+x30 i20 j20 c20 s50 r20 g50
+x40 i50 j20 c-10 s-10 r20 g40

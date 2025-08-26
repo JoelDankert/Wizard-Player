@@ -219,8 +219,12 @@ def push_event_token(template, color, players, idx):
     pname = players[idx][1].strip() or players[idx][0].upper()
     push_event(template.format(spieler=pname), color)
 
+
+
 def apply_game_step(players, gm, goals, reached):
-    if not gm: return
+    if not gm:
+        return
+
     if gm[0] == 'l':
         idx = find_associating(players, gm, False)
         if idx != -1:
@@ -228,16 +232,34 @@ def apply_game_step(players, gm, goals, reached):
             push_event_token("{spieler} Punkt verloren", "red", players, idx)
             set_wait(False)
         return
+
     idx = find_associating(players, gm, True)
-    if idx == -1: return
+    if idx == -1:
+        return
+
     if not gm[1:].isdigit():
+        # Stapelaufnahme
         reached[idx] += 1
-        push_event_token("{spieler} nimmt den Stapel", "gold", players, idx)
+        g = goals[idx]
+        r = reached[idx]
+        pname = players[idx][1].strip() or players[idx][0].upper()
+
+        if g > 0 and r == g:
+            push_event(f"{pname} hat die Stiche erreicht", "gold")
+        elif r > g:
+            push_event(f"{pname} hat die Stiche überschritten", "gold")
+        else:
+            push_event(f"{pname} nimmt den Stapel", "gold")
+
         set_wait(False)
+
     else:
+        # Zielansage
         goals[idx] = int(gm[1:])
         push_event_token("{spieler} zielt " + str(goals[idx]) + " Stiche an", "gray", players, idx)
         set_wait(False)
+
+
 
 def colorize_progress(s: str) -> str:
     s = s.replace("+o", f"{GREEN}+o{RESET}").replace("O ", f"{GREEN}O {RESET}") \
@@ -339,20 +361,18 @@ def gameplay_loop(name):
         render(i, players, goals, reached)
         inp_raw = input("> ").strip()
         inp = inp_raw.lower()
-
         if inp == "next":
             scores = score_round_per_player(goals, reached)
             toks = tokens_for_round(players, scores)
             append_game(name, toks)
-            lr = build_last_round_summary(name, players, scores, goals, reached)  # ← pass goals & reached
+            lr = build_last_round_summary(name, players, scores, goals, reached)
             set_last_round_summary(lr)
             recompute_and_push_totals(name, players)
-            goals, reached = build_initial_state(players)  # reset AFTER summary creation
+            goals, reached = build_initial_state(players)  # reset
             i += 1
             update_web_state(i, players, goals, reached)
             set_wait(True)
             push_event("Nächste Runde gestartet", "gray")
-
         elif inp == "view":
             show_totals_sorted(name, players)
             input(f"{WHITE}(press enter to continue){RESET}")

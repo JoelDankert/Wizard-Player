@@ -13,9 +13,11 @@ const $waitSummary = document.getElementById("waitSummary");
 const $waitBody = document.getElementById("waitBody");
 const $scoresBody = document.getElementById("scoresBody");
 const sounds = {
-    goal: new Audio("sounds/goal.mp3"),         // Spieler zielt X Stiche an
-    stack: new Audio("sounds/stack.mp3"),       // Spieler nimmt Stapel
-    roundEnd: new Audio("sounds/roundend.mp3"), // Runde abgeschlossen
+    goal: new Audio("sounds/goal.mp3"),
+    stack: new Audio("sounds/stack.mp3"),
+    roundEnd: new Audio("sounds/roundend.mp3"),
+    applause: new Audio("sounds/applause.mp3"), 
+    sad: new Audio("sounds/sad.mp3"), 
 };
 
 let lastSeq = 0;
@@ -96,9 +98,24 @@ function renderStandingsTable(targetEl, rows, {
         tr.append(pos);
 
         // Name + indicators
-        const nameText = normalizeName(row.name ?? "");
-        const nameCell = el("td", null, nameText);
+        let rawName = row.name ?? "";
+        let emojiMatch = rawName.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u);
+        let avatar = null;
+        let displayName = normalizeName(rawName);
 
+        if (emojiMatch) {
+            avatar = emojiMatch[0];
+            displayName = normalizeName(rawName.slice(avatar.length).trim());
+        }
+
+        const nameCell = el("td", null);
+
+if (avatar) {
+    // Emoji + forced double space + name
+    nameCell.textContent = avatar + "\u00A0\u00A0" + displayName;
+} else {
+    nameCell.textContent = displayName;
+}
         const nameIndicators = [];
         const scoreIndicators = [];
 
@@ -117,7 +134,8 @@ function renderStandingsTable(targetEl, rows, {
                     top50TotalThreshold != null &&
                     v <= bottom30Threshold &&
                     Number.isFinite(totalV) &&
-                    totalV >= top50TotalThreshold
+                    totalV >= top50TotalThreshold &&
+                    v < 0
                 ) {
                     nameIndicators.push("⇅");
                 }
@@ -218,13 +236,30 @@ function render(state){
 
         const rp = preview[originalIndex >= 0 ? originalIndex : idx] ?? 0;
 
-        const card = el("article", "player");
-        card.append(el("div", "name", p.name));
-        card.append(el("div", `bigfraction ${fractionClass(p.goal, p.reached)}`, `${p.reached}/${p.goal}`));
-        card.append(el("div", "roundpoints mono", `${rp >= 0 ? "+" : ""}${rp}`));
-        $players.append(card);
-    }
+        // --- NEW: split emoji from name ---
+        const emojiMatch = p.name.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u);
+        let avatar = null;
+        let displayName = p.name;
+        if (emojiMatch) {
+            avatar = emojiMatch[0];
+            displayName = p.name.slice(avatar.length).trim();
+        }
 
+        const card = el("article", "player");
+        card.append(el("div", "name", displayName));
+
+        // wrapper for fraction + roundpoints + avatar
+        const box = el("div", "player-box");
+
+// stack fraction + roundpoints
+const stats = el("div", "stats");
+stats.append(el("div", `bigfraction ${fractionClass(p.goal, p.reached)}`, `${p.reached}/${p.goal}`));
+stats.append(el("div", "roundpoints mono", `${rp >= 0 ? "+" : ""}${rp}`));
+
+box.append(stats);
+if (avatar) box.append(el("div", "avatar", avatar));
+card.append(box);        $players.append(card);
+    }
     // Wartescreen
     if (state.wait){
         $wait.classList.add("show");
@@ -333,7 +368,6 @@ function computeStandings(state){
 
     return rows;
 }
-
 function showNextBanner() {
     if (bannerOpen || eventQueue.length === 0) return;
     const e = eventQueue.shift();
@@ -349,18 +383,46 @@ function showNextBanner() {
     const startTime = Date.now();
 
     $banner.className = "banner show " + (e.color || "gray");
-    $bannerText.textContent = e.text;
 
+    // --- extract emoji avatar if present at start ---
+    const emojiMatch = e.text.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u);
+    let avatar = null;
+    let msgText = e.text;
+    if (emojiMatch) {
+        avatar = emojiMatch[0];
+        msgText = e.text.slice(avatar.length).trim();
+    }
+
+    // Clear old content
+    $bannerText.textContent = "";
+    if (avatar) {
+        const avatarEl = el("div", "banner-avatar", avatar);
+        $bannerText.append(avatarEl);
+    }
+    const textEl = el("div", "banner-message", msgText);
+    $bannerText.append(textEl);
+
+    // --- Sounds ---
     if (/zielt/i.test(e.text)) {
         const match = e.text.match(/\d+/);
         const count = match ? parseInt(match[0], 10) : 0;
         for (let i = 0; i < count; i++) {
             setTimeout(() => {
                 playSound("goal", 1);
-            }, i * 100); // 100ms stagger for strong overlap
+            }, i * 100);
         }
     } else if (/nimmt den Stapel/i.test(e.text)) {
         playSound("stack", 1);
+    } else if (/Stiche erreicht/i.test(e.text)) {
+        
+        playSound("stack", 1);
+        playSound("applause", 0.2);
+
+    } else if (/Stiche überschritten/i.test(e.text)) {
+
+        playSound("stack", 1);
+        playSound("sad", 0.05);
+
     }
 
     if (hideTimer) clearTimeout(hideTimer);
@@ -369,20 +431,17 @@ function showNextBanner() {
         const elapsed = Date.now() - startTime;
 
         if (eventQueue.length > 0 && elapsed >= 1000) {
-            // Queue waiting, min 1s shown → move on instantly
             $banner.className = "banner hidden";
             bannerOpen = false;
             setTimeout(showNextBanner, 50);
         } else if (eventQueue.length === 0 && elapsed < 3000) {
-            // Nothing waiting, keep banner until 3s
             hideTimer = setTimeout(cycle, 100);
         } else {
-            // 3s passed or no queue left → hide
             $banner.className = "banner hidden";
             bannerOpen = false;
             setTimeout(showNextBanner, 50);
         }
-    }, 1000); // first check after 1s
+    }, 1000);
 }
 
 async function poll(){
