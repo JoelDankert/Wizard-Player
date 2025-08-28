@@ -262,12 +262,13 @@ def play_game(playercount, cardcount):
     stack = stack[1:]
     trumpcolor = color(trump)
     clear()
+    currentplayer = random.randint(0,playercount-1)
+    display_players(playercount, currentplayer)
     print("Trump: "+ render_card(trump))
     print("\nHand:")
     print(render_hand(players[0]))
     gotten = 0
     bid = get_bid() 
-    currentplayer = random.randint(0,playercount-1)
 
     while 1:
         print(f"{gotten}/{bid}")
