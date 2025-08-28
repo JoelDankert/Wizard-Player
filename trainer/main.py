@@ -246,8 +246,8 @@ def play_lay(players,trump,currentplayer):
 
                     break
                 else:
-                    continue
-                    
+                    playing = available[0]
+                    break
                      
             players[currentplayer].remove(playing)
         
