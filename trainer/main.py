@@ -225,7 +225,7 @@ def play_lay(players,trump,currentplayer):
         if currentplayer != 0: # isbot
             available = get_available_cards(players[currentplayer],togive)
             iswiz = [color(c) == "W" for c in lay]
-            if random.random() > 0.7:
+            if random.random() < 0.5:
                 available = filter_for_bots(available, trumpcolor, iswiz)
             playing = random.choice(available)
             players[currentplayer].remove(playing)
