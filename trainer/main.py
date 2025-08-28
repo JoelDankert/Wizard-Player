@@ -90,8 +90,9 @@ def make_bold(string):
 def filter_for_bots(available, trumpcolor, iswiz):
     newavailable = []
     if iswiz:
-        if number(card) not in ["W","N"]:
-            newavailable.append(card)
+        for card in available:
+            if number(card) not in ["W","N"]:
+                newavailable.append(card)
 
     for card in available:
         if color(card) == trumpcolor or number(card) in ["W","N"]:
@@ -195,7 +196,7 @@ def play_lay(players,trump,currentplayer):
 
         print("+ "+render_hand(lay))
         print()
-        time.sleep(0.5)
+        time.sleep(0.1)
         
         if i == playercount:
             return who_won(lay,startingplayer,playercount,trumpcolor)
@@ -222,7 +223,8 @@ def play_lay(players,trump,currentplayer):
         if currentplayer != 0: # isbot
             available = get_available_cards(players[currentplayer],togive)
             iswiz = [color(c) == "W" for c in lay]
-            available = filter_for_bots(available, trumpcolor, iswiz)
+            if random.random() > 0.7:
+                available = filter_for_bots(available, trumpcolor, iswiz)
             playing = random.choice(available)
             players[currentplayer].remove(playing)
             lay.append(playing)
