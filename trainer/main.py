@@ -112,7 +112,7 @@ def get_available_cards(cards, togive):
     if togive == -1:
         return cards
 
-    lead_suit_cards = [card for card in cards if color(card) == togive]
+    lead_suit_cards = [card for card in cards if color(card) == togive and not number(card) in ["W","N"]]
 
     if lead_suit_cards:
         return [card for card in cards if color(card) == togive or number(card) in ["W", "N"]]
