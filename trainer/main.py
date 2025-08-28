@@ -3,6 +3,19 @@ import random
 import os
 import re
 
+colors = [
+    "\033[31m",  # Red
+    "\033[32m",  # Green
+    "\033[33m",  # Yellow
+    "\033[34m"   # Blue
+]
+reset = "\033[0m"
+
+players = 7
+cards = 1
+
+
+
 def shuffle():
     cards = []
     for x in range(4):
@@ -28,13 +41,6 @@ def shuffle():
     return cards
 
 
-colors = [
-    "\033[31m",  # Red
-    "\033[32m",  # Green
-    "\033[33m",  # Yellow
-    "\033[34m"   # Blue
-]
-reset = "\033[0m"
 def render_card(cardname):
     return colors[int(cardname[0])]+cardname[2:]+reset
 
@@ -80,6 +86,26 @@ def display_players(playercount, current):
 
 def make_bold(string):
     return f"\033[1m{string}\033[0m"
+
+def filter_for_bots(available, trumpcolor, iswiz):
+    newavailable = []
+    if iswiz:
+        if number(card) not in ["W","N"]:
+            newavailable.append(card)
+
+    for card in available:
+        if color(card) == trumpcolor or number(card) in ["W","N"]:
+            pass
+        else:
+            newavailable.append(card)
+            
+    if len(newavailable) == 0:
+        newavailable = available
+
+    return newavailable
+
+
+
 
 def get_available_cards(cards, togive):
     if togive == -1:
@@ -129,8 +155,30 @@ def who_won(lay, startingplayer, playercount, trumpcolor):
 
     return (startingplayer + winning_index) % playercount
     
+
 def play_lay(players,trump,currentplayer):
+
     trumpcolor = color(trump)
+
+    if number(trump) == "W":
+        if currentplayer == 0:  
+            while 1:
+                inp = input("Trump? (0-R, 1-G, 2-Y, 3-B)\n> ")
+                if inp.isdigit() and inp in range(4):
+                    trumpcolor = inp
+                    break
+
+        else:
+            trumpcolor = random.randint(0,4)
+
+
+    if number(trump) == "N":
+        trumpcolor = -1
+
+    if number(trump) != trumpcolor:
+        sim_trump = f"{trumpcolor}-0"
+
+
     lay = []
     playercount = len(players)
     startingplayer = currentplayer
@@ -140,10 +188,14 @@ def play_lay(players,trump,currentplayer):
         clear()
         if i != playercount:
             display_players(playercount, currentplayer)
-        print("Trump: "+render_card(trump))
+        if trumpcolor == color(trump):
+            print("Trump: "+render_card(trump))
+        else:
+            print(f"Trump: {render_card(trump)}\nColor: {render_card(sim_trump)}")
+
         print("+ "+render_hand(lay))
         print()
-        time.sleep(1)
+        time.sleep(0.5)
         
         if i == playercount:
             return who_won(lay,startingplayer,playercount,trumpcolor)
@@ -169,6 +221,8 @@ def play_lay(players,trump,currentplayer):
 
         if currentplayer != 0: # isbot
             available = get_available_cards(players[currentplayer],togive)
+            iswiz = [color(c) == "W" for c in lay]
+            available = filter_for_bots(available, trumpcolor, iswiz)
             playing = random.choice(available)
             players[currentplayer].remove(playing)
             lay.append(playing)
@@ -279,9 +333,6 @@ def render_hand(hand):
         temp.append(render_card(card))
 
     return " ".join(temp)
-
-players = 4
-cards = 5
 
 # gameplay loop
 while 1:
