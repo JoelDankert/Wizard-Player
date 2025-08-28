@@ -173,7 +173,7 @@ def play_lay(players,trump,currentplayer):
                         break
 
         else:
-            trumpcolor = random.randint(0,4)
+            trumpcolor = random.randint(0,3)
 
 
     if number(trump) == "N":
