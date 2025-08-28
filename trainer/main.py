@@ -164,10 +164,12 @@ def play_lay(players,trump,currentplayer):
     if number(trump) == "W":
         if currentplayer == 0:  
             while 1:
+                print(render_hand(players[0]))
                 inp = input("Trump? (0-R, 1-G, 2-Y, 3-B)\n> ")
-                if inp.isdigit() and inp in range(4):
-                    trumpcolor = inp
-                    break
+                if inp.isdigit():
+                    if inp >= 0 and inp <= 3:
+                        trumpcolor = inp
+                        break
 
         else:
             trumpcolor = random.randint(0,4)
