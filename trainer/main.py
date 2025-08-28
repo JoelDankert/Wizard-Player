@@ -167,6 +167,7 @@ def play_lay(players,trump,currentplayer):
                 print(render_hand(players[0]))
                 inp = input("Trump? (0-R, 1-G, 2-Y, 3-B)\n> ")
                 if inp.isdigit():
+                    inp=int(inp)
                     if inp >= 0 and inp <= 3:
                         trumpcolor = inp
                         break
