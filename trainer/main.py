@@ -176,7 +176,7 @@ def play_lay(players,trump,currentplayer):
     if number(trump) == "N":
         trumpcolor = -1
 
-    if number(trump) != trumpcolor:
+    if number(trump) == "W":
         sim_trump = f"{trumpcolor}-0"
 
 
@@ -189,7 +189,7 @@ def play_lay(players,trump,currentplayer):
         clear()
         if i != playercount:
             display_players(playercount, currentplayer)
-        if trumpcolor == color(trump):
+        if number(trump) != "W":
             print("Trump: "+render_card(trump))
         else:
             print(f"Trump: {render_card(trump)}\nColor: {render_card(sim_trump)}")
