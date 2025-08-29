@@ -161,28 +161,6 @@ def play_lay(players,trump,currentplayer):
 
     trumpcolor = color(trump)
 
-    if number(trump) == "W":
-        if currentplayer == 0:  
-            while 1:
-                print(render_hand(players[0]))
-                inp = input("Trump? (0-R, 1-G, 2-Y, 3-B)\n> ")
-                if inp.isdigit():
-                    inp=int(inp)
-                    if inp >= 0 and inp <= 3:
-                        trumpcolor = inp
-                        break
-
-        else:
-            trumpcolor = random.randint(0,3)
-
-
-    if number(trump) == "N":
-        trumpcolor = -1
-
-    if number(trump) == "W":
-        sim_trump = f"{trumpcolor}-0"
-
-
     lay = []
     playercount = len(players)
     startingplayer = currentplayer
@@ -195,7 +173,7 @@ def play_lay(players,trump,currentplayer):
         if number(trump) != "W":
             print("Trump: "+render_card(trump))
         else:
-            print(f"Trump: {render_card(trump)}\nColor: {render_card(sim_trump)}")
+            print(f"Trump: {render_card(trump)}")
 
         print("+ "+render_hand(lay))
         print()
@@ -265,9 +243,23 @@ def play_game(playercount, cardcount):
 
     trump = stack[0]
     stack = stack[1:]
+    currentplayer = random.randint(0,playercount-1)
+
+    if number(trump) == "W":
+        if currentplayer == 0:  
+            while 1:
+                print(render_hand(players[0]))
+                inp = input("Trump? (0-R, 1-G, 2-Y, 3-B)\n> ")
+                if inp.isdigit():
+                    inp=int(inp)
+                    if inp >= 0 and inp <= 3:
+                        trump = f"{inp}-0"
+                        break
+        else:
+            trump = f"{random.randint(0,3)}-0"
+
     trumpcolor = color(trump)
     clear()
-    currentplayer = random.randint(0,playercount-1)
     display_players(playercount, currentplayer)
     print("Trump: "+ render_card(trump))
     print("\nHand:")
