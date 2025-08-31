@@ -342,33 +342,46 @@ def show_totals_sorted(name, players):
     totals = compute_totals_from_file(name, players)
     idxs = sorted(range(len(players)), key=lambda i: totals[i], reverse=True)
     print(f"{WHITE}{BOLD}totals:{RESET}")
+
     prev_score = None
     place = 0
+    seen = 0
     items = []
     for i in idxs:
+        seen += 1
         score = totals[i]
         if prev_score is None or score != prev_score:
-            place += 1
+            place = seen   # skip correctly if tie block ends
             prev_score = score
+
         pref, pname = players[i]
         ind = 10 - len(pname)
         score_color = GREEN if score > 0 else RED if score < 0 else WHITE
         line_left = f"{place}. {pname + ind * ' '}: "
         print(f"{WHITE}{line_left}{RESET}{score_color}{score}{RESET}")
         items.append({"place": place, "name": pname.strip() or pref.upper(), "score": score})
+
     set_modal_totals(items)
     set_totals(players, totals)
     set_wait(False)
+
 
 def build_last_round_summary(name, players, round_scores, goals, reached):
     totals = compute_totals_from_file(name, players)
     idxs = sorted(range(len(players)), key=lambda i: totals[i], reverse=True)
     by_index_round = {i: round_scores[i] for i in range(len(players))}
-    prev = None; place = 0; items = []
+
+    prev_score = None
+    place = 0
+    seen = 0
+    items = []
     for i in idxs:
-        if prev is None or totals[i] != prev:
-            place += 1
-            prev = totals[i]
+        seen += 1
+        score = totals[i]
+        if prev_score is None or score != prev_score:
+            place = seen
+            prev_score = score
+
         pref, pname = players[i]
         items.append({
             "place": place,

@@ -468,28 +468,28 @@ function showNextBanner() {
         if (hideTimer) clearTimeout(hideTimer);
         hideTimer = setTimeout(function cycle() {
             const elapsed = Date.now() - startTime;
-            if (eventQueue.length > 0 && elapsed >= 1000) {
+            if (eventQueue.length > 0 && elapsed >= 500) {
                 $banner.className = "banner hidden";
                 bannerOpen = false;
                 setTimeout(showNextBanner, 50);
-            } else if (eventQueue.length === 0 && elapsed < 3000) {
+            } else if (eventQueue.length === 0 && elapsed < 1500) {
                 hideTimer = setTimeout(cycle, 100);
             } else {
                 $banner.className = "banner hidden";
                 bannerOpen = false;
                 setTimeout(showNextBanner, 50);
             }
-        }, 1000);
+        }, 500);
     };
 
     if (e.particles) {
         const emojiMatch = e.text.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u);
         const avatarEmoji = emojiMatch ? emojiMatch[0] : null;
 
-        playSound("wizard", 1);
+        playSound("wizard", 0.6);
         triggerParticles(avatarEmoji);
 
-        setTimeout(() => renderBanner(), 3000);
+        setTimeout(() => renderBanner(), 1500);
     } else {
         renderBanner();
     }
