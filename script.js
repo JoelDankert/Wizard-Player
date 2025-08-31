@@ -315,7 +315,7 @@ function render(state){
         const dealerMsg = document.getElementById("waitDealerMsg");
         if (dealerMsg) {
             if (dealerName) {
-                dealerMsg.textContent = `Geber: ${dealerName} • Karten: ${cardsVal}`;
+                dealerMsg.textContent = `${dealerName} verteilt ${cardsVal} Karten...`;
                 dealerMsg.classList.remove("hidden");
             } else {
                 dealerMsg.textContent = "";

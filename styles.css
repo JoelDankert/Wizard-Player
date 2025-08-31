@@ -5,6 +5,7 @@
   --radius:18px; --shadow:0 8px 24px rgba(16,24,40,.06);
 }
 
+/* reset / base */
 *{box-sizing:border-box}
 html,body{
   margin:0; padding:0; background:var(--bg); color:var(--text);
@@ -17,10 +18,10 @@ html,body{
 /* Karten-Titel (kein fixed → kein Overlap) */
 #cardsHeader{
   position: static;
-  display:flex; align-items:center; justify-content:center; /* FIX: was justify-cent */
+  display:flex; align-items:center; justify-content:center;
   margin:16px auto 8px;
   font-weight:800; font-size:1.4rem; color:#000;
-  text-align:center; /* keep text centered if it wraps */
+  text-align:center;
 }
 #cardsHeader .label{opacity:.65; margin-right:6px}
 
@@ -30,7 +31,7 @@ html,body{
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
-/* Player card: Fokus n/k */
+/* Player card */
 .player{
   background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
   padding:16px 16px 14px; display:flex; flex-direction:column; gap:10px
@@ -52,25 +53,37 @@ html,body{
 .banner-inner{max-width:min(88vw,1200px); padding:12px}
 .banner-text{font-size:clamp(2.2rem, 6vw, 4.6rem); font-weight:900; text-align:center; color:#2b2f36}
 
-/* Totals-Modal (non-interactive) */
-.modal{position:fixed; inset:0; display:none; place-items:center; z-index:50;
-  background:transparent}
+/* Totals-Modal (Overlay blur hier!) */
+.modal{
+  position:fixed; inset:0; display:none; place-items:center; z-index:50;
+  background:rgba(255,255,255,.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
 .modal.show{display:grid}
-.modal-card{width:min(860px,95vw); max-height:80vh; overflow:auto; background:#fff;
+.modal-card{
+  width:min(860px,95vw); max-height:80vh; overflow:auto; background:#fff;
   border:1px solid #e9eef5; border-radius:18px; box-shadow:0 18px 48px rgba(16,24,40,.14);
-  padding:16px 18px}
+  padding:16px 18px
+}
 .modal-card h2{margin:4px 0 12px; font-size:1.4rem}
 .table{width:100%; border-collapse:collapse; font-size:1.5rem}
 .table thead th{text-align:left; color:var(--muted); font-weight:700; padding:8px 6px; border-bottom:1px solid #eef2f6}
 .table tbody td{padding:8px 6px; border-bottom:1px solid #f2f4f8}
 .badge-pos{font-weight:800; padding:4px 10px; border-radius:999px; background:#f2f5f9}
 
-/* Wartescreen */
-.wait{position:fixed; inset:0; display:none; place-items:center; z-index:80;
-  background:transparent}
+/* Wartescreen (Overlay blur hier!) */
+.wait{
+  position:fixed; inset:0; display:none; place-items:center; z-index:80;
+  background:rgba(255,255,255,.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
 .wait.show{display:grid}
-.wait-card{background:#fff; border:1px solid #e9eef5; border-radius:22px; box-shadow:var(--shadow);
-  padding:26px; min-width:min(640px,96vw); display:grid; gap:14px; justify-items:center}
+.wait-card{
+  background:#fff; border:1px solid #e9eef5; border-radius:22px; box-shadow:var(--shadow);
+  padding:26px; min-width:min(640px,96vw); display:grid; gap:14px; justify-items:center
+}
 .spinner{width:56px;height:56px;border-radius:50%;border:6px solid #e7ecf3;border-top-color:#7cc7a5;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .wait-text{font-weight:800; font-size:1.1rem}
@@ -78,6 +91,7 @@ html,body{
 .wait-summary.hidden{display:none}
 .wait-summary h3{margin:6px 0 6px}
 
+/* Layout */
 #layout {
   display: flex;
   height: 100vh;
@@ -93,7 +107,7 @@ html,body{
 #scoresPanel {
   flex: 0 0 30%;
   border-left: 1px solid #e9eef5;
-  background: var(--card);
+  background: #fff;
   padding: 12px;
   box-shadow: var(--shadow);
   overflow-y: auto;
@@ -105,109 +119,59 @@ html,body{
   font-weight: 800;
 }
 
+/* Banner-Content */
 .banner-avatar {
-  font-size: 8rem;       /* make emoji large */
+  font-size: 8rem;
   line-height: 1;
   text-align: center;
   margin-bottom: 0.3em;
 }
-
 .banner-message {
-  font-size: 3rem;     /* slightly bigger than default text */
+  font-size: 3rem;
   text-align: center;
 }
 
-.player-box {
-  position: relative;   /* allow absolute positioning of the avatar */
-}
-
+/* Player card intern */
+.player-box { position: relative; }
 .player-box .stats {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;  /* left aligned */
+  display: flex; flex-direction: column; align-items: flex-start;
+}
+.player-box .avatar {
+  position: absolute; top: 0; right: 0; font-size: 3rem; line-height: 1;
 }
 
-.player-box .avatar {
-  position: absolute;
-  top: 0;
-  right: 0;
-  font-size: 3rem;
-  line-height: 1;
-}
+/* Partikel / Effekte */
 .particles {
-  position: fixed;
-  left: 0; top: 0; width: 100%; height: 100%;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 99999;
+  position: fixed; left: 0; top: 0; width: 100%; height: 100%;
+  pointer-events: none; overflow: hidden; z-index: 99999;
 }
-.particle {
-  position: absolute;
-  opacity: 0;
-  font-size: 3rem;
-  line-height: 1;
-}
+.particle { position: absolute; opacity: 0; font-size: 3rem; line-height: 1; }
 
 @keyframes zap {
-  0% {
-    transform: translateX(0);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  100% {
-    /* Zielweite pro Partikel über --dist */
-    transform: translateX(calc(var(--fromLeft, 1) * var(--dist) - var(--dist) / 2));
-    opacity: 0;
-  }
+  0% { transform: translateX(0); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateX(calc(var(--fromLeft, 1) * var(--dist) - var(--dist) / 2)); opacity: 0; }
 }
 .wizard-overlay {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 6rem;
-  font-weight: bold;
-  color: white;
-  text-shadow: 0 0 8px black, 0 0 16px black;
-  z-index: 100000;
-  pointer-events: none;
-  white-space: nowrap;
-  width: auto;
-  animation: wizardFade 2s ease-out forwards;
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  font-size: 6rem; font-weight: bold; color: white;
+  text-shadow: 0 0 8px black, 0 0 16px black; z-index: 100000;
+  pointer-events: none; white-space: nowrap; width: auto; animation: wizardFade 2s ease-out forwards;
+}
+@keyframes wizardFade {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  85% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
 }
 
-@keyframes wizardFade {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.8);
-  }
-  15% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-  85% {
-    opacity: 1; 
-    transform: translate(-50%, -50%) scale(1.1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(1.2);
-  }
-}
-/* utility */
+/* Utils */
 .hidden { display: none; }
 
-/* dealer pill shown on the wait overlay */
+/* Dealer-Pill minimal */
 .wait-dealer {
-  font-weight: 800;
-  font-size: 1.1rem;
+  font-weight: 600;
+  font-size: 1.5rem;
   color: var(--text);
-  background: #f4f7fb;
-  border: 1px solid #e9eef5;
-  border-radius: 999px;
-  padding: 6px 12px;
-  box-shadow: var(--shadow);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
