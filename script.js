@@ -30,6 +30,11 @@ let bannerOpen = false;
 let hideTimer = null;
 
 /* ————— Helpers ————— */
+function stripLeadingEmoji(s){
+  const raw = normalizeName(s) || "";
+  const m = raw.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u);
+  return m ? raw.slice(m[0].length).trim() : raw;
+}
 function triggerParticles(avatarEmoji) {
     const overlay = document.createElement("div");
     overlay.className = "wizard-overlay";
@@ -241,6 +246,13 @@ function render(state){
     // Karten-Header + Stiche-Anzeige
     const totalGoals = (state.goals || []).reduce((a, b) => a + (b || 0), 0);
     const cardsVal = state.cards ?? "–";
+
+    // Nur Dealer (kein Starter mehr anzeigen)
+    const dealerName = state.dealer
+        ? (stripLeadingEmoji(state.dealer.name) || (state.dealer.pref || "").toUpperCase())
+        : null;
+
+    // Headertext (ohne Starter)
     let text = `Karten: ${cardsVal}`;
     if (state.cards && state.goals && state.goals.length) {
         text += `&nbsp;&nbsp;&nbsp;Stiche: ${totalGoals}`;
@@ -255,7 +267,7 @@ function render(state){
         reached: (state.reached || [])[i] ?? 0,
     })).sort((a, b) => b.goal - a.goal);
 
-    // Preview-Score (inkl. +o-Bonus, auch 0/0 => +20) kommt direkt vom Backend im Feld preview_scores
+    // Preview-Score (inkl. +o-Bonus)
     const preview = state.preview_scores || [];
 
     // Render Player cards
@@ -273,33 +285,44 @@ function render(state){
 
         const rp = preview[originalIndex >= 0 ? originalIndex : idx] ?? 0;
 
-        // --- NEW: split emoji from name ---
+        // Emoji vom Namen trennen (optional)
         const emojiMatch = p.name.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u);
         let avatar = null;
         let displayName = p.name;
         if (emojiMatch) {
             avatar = emojiMatch[0];
-            displayName = p.name.slice(avatar.length).trim();
+            displayName = p.name.slice(emojiMatch[0].length).trim();
         }
 
         const card = el("article", "player");
         card.append(el("div", "name", displayName));
 
-        // wrapper for fraction + roundpoints + avatar
         const box = el("div", "player-box");
-
-        // stack fraction + roundpoints
         const stats = el("div", "stats");
         stats.append(el("div", `bigfraction ${fractionClass(p.goal, p.reached)}`, `${p.reached}/${p.goal}`));
         stats.append(el("div", "roundpoints mono", `${rp >= 0 ? "+" : ""}${rp}`));
-
         box.append(stats);
         if (avatar) box.append(el("div", "avatar", avatar));
-        card.append(box);        $players.append(card);
+        card.append(box);
+        $players.append(card);
     }
+
     // Wartescreen
     if (state.wait){
         $wait.classList.add("show");
+
+        // Dealer-Hinweis (oben im Wait-Overlay, inkl. Kartenanzahl)
+        const dealerMsg = document.getElementById("waitDealerMsg");
+        if (dealerMsg) {
+            if (dealerName) {
+                dealerMsg.textContent = `Geber: ${dealerName} • Karten: ${cardsVal}`;
+                dealerMsg.classList.remove("hidden");
+            } else {
+                dealerMsg.textContent = "";
+                dealerMsg.classList.add("hidden");
+            }
+        }
+
         // Letzte Runde (Placement + Rundenpunkte + Total)
         const lr = state.last_round;
         if (lr && Array.isArray(lr.items) && lr.items.length){
@@ -326,13 +349,14 @@ function render(state){
         }
     } else {
         $wait.classList.remove("show");
+        const dealerMsg = document.getElementById("waitDealerMsg");
+        if (dealerMsg) dealerMsg.classList.add("hidden");
     }
 
-    // Totals-Modal (nur Totals, kein Rundenscore) — render via central function
+    // Totals-Modal (nur Totals, kein Rundenscore)
     if (state.modal && state.modal.kind === "totals"){
-        // Build rows from computeStandings using modal as source
         const modalRows = computeStandings({
-            players: [],        // leeres players -> computeStandings nimmt modal.items
+            players: [],
             modal: state.modal
         });
         renderStandingsTable($modalContent, modalRows, {
@@ -345,7 +369,7 @@ function render(state){
         $modal.classList.remove("show");
     }
 
-    // Always-on scores panel (einheitliche Logik aus allen Quellen) — central renderer to tbody
+    // Always-on scores panel
     renderStandingsTable($scoresBody, computeStandings(state), {
         showRound: false,
         podiumColors: true
