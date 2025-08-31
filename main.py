@@ -298,11 +298,6 @@ def apply_game_step(players, gm, goals, reached):
         push_event_token("{spieler} zielt " + str(goals[idx]) + " Stiche an", "gray", players, idx)
         set_wait(False)
 
-def colorize_progress(s: str) -> str:
-    s = s.replace("+o", f"{GREEN}+o{RESET}").replace("O ", f"{GREEN}O {RESET}") \
-         .replace("x ", f"{RED}x {RESET}").replace("X ", f"{RED}X {RESET}") \
-         .replace("_ ", f"{WHITE}_ {RESET}")
-    return s
 
 def render(cards, players, goals, reached):
     update_web_state(cards, players, goals, reached)
@@ -311,13 +306,17 @@ def render(cards, players, goals, reached):
     asso = sorted(asso, key=lambda x: x[1], reverse=True)
     lines = []
     for ass in asso:
-        todo = ass[1] - ass[2]; done = ass[2]
-        if todo < 0: string = "_ " * ass[1] + "X " * (ass[2] - ass[1])
-        elif todo == 0: string = "O " * done + "x " * todo + " +o"
-        else: string = "_ " * done + "x " * todo
-        ind = 10 - len(ass[0][1]); colored_bar = colorize_progress(string)
-        lines.append(f"{WHITE}{ass[0][1] + ind * ' '}: {RESET}{colored_bar}")
-    for line in lines: print(line)
+        goal, done = ass[1], ass[2]
+        if done == goal:
+            ratio = f"{GREEN}{done}/{goal}{RESET}"
+        elif done > goal:
+            ratio = f"{RED}{done}/{goal}{RESET}"
+        else:
+            ratio = f"{WHITE}{done}/{goal}{RESET}"
+        ind = 10 - len(ass[0][1])
+        lines.append(f"{WHITE}{ass[0][1] + ind * ' '} {RESET}{ratio}")
+    for line in lines:
+        print(line)
 
 def tokens_for_round(players, scores):
     return [f"{pref}{sc}" for (pref, _name), sc in zip(players, scores)]
