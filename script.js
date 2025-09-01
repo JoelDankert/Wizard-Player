@@ -252,12 +252,6 @@ function render(state){
         ? (stripLeadingEmoji(state.dealer.name) || (state.dealer.pref || "").toUpperCase())
         : null;
 
-    // Headertext (ohne Starter)
-    let text = `Karten: ${cardsVal}`;
-    if (state.cards && state.goals && state.goals.length) {
-        text += `&nbsp;&nbsp;&nbsp;Stiche: ${totalGoals}`;
-    }
-    $cards.innerHTML = text;
 
     // Spieler nach Goal absteigend (links->rechts)
     const players = [...(state.players || [])].map((p, i) => ({
@@ -266,6 +260,16 @@ function render(state){
         goal: (state.goals || [])[i] ?? 0,
         reached: (state.reached || [])[i] ?? 0,
     })).sort((a, b) => b.goal - a.goal);
+
+    // Headertext (ohne Starter)
+    let maxRounds = Math.floor(60 / players.length);
+    let text = `Runde: ${cardsVal} / ${maxRounds}`;
+
+    if (state.cards && state.goals && state.goals.length) {
+        text += `&nbsp;&nbsp;&nbsp;Stiche: ${totalGoals}`;
+    }
+
+    $cards.innerHTML = text;
 
     // Preview-Score (inkl. +o-Bonus)
     const preview = state.preview_scores || [];
@@ -315,7 +319,8 @@ function render(state){
         const dealerMsg = document.getElementById("waitDealerMsg");
         if (dealerMsg) {
             if (dealerName) {
-                dealerMsg.textContent = `${dealerName} verteilt ${cardsVal} Karten...`;
+                let maxRounds = Math.floor(60 / players.length);
+                dealerMsg.textContent = `${cardsVal} / ${maxRounds}\n${dealerName} verteilt ${cardsVal} Karten...`;
                 dealerMsg.classList.remove("hidden");
             } else {
                 dealerMsg.textContent = "";

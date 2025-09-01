@@ -171,7 +171,14 @@ html,body{
 /* Dealer-Pill minimal */
 .wait-dealer {
   font-weight: 600;
+  width: 300px;
   font-size: 1.5rem;
   color: var(--text);
   margin-bottom: 8px;
+  white-space: pre-line; /* enables \n line breaks */
+  text-align: center;
+}
+.wait-dealer:first-line {
+  font-size: 1.2rem;   /* smaller */
+  font-weight: 500;    /* optional lighter */
 }
