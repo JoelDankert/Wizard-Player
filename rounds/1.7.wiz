@@ -5,3 +5,13 @@ r 🌎Ricky
 t 👲Tini
 m 🫡Martin
 
+x-10 i20 j-10 r20 t20 m20
+x20 i20 j-10 r20 t20 m30
+x-10 i-10 j20 r20 t30 m20
+x30 i20 j40 r30 t-10 m-10
+x-10 i30 j20 r-10 t-10 m30
+x-10 i20 j30 r40 t30 m20
+x40 i-10 j-10 r20 t-20 m-10
+x20 i30 j-10 r-10 t40 m40
+x40 i-10 j20 r50 t-10 m30
+x60 i40 j20 r30 t40 m-10
