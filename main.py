@@ -30,6 +30,8 @@ WEB_STATE = {
     # --- NEW: Dealer/Starter in State ---
     "dealer": None,         # {"index": int, "pref": str, "name": str}
     "starter": None,        # {"index": int, "pref": str, "name": str}
+    "theme": "dark",        # "light" | "dark"
+    "stats": None,          # reserved
 }
 _state_lock = threading.Lock()
 _event_seq = 0
@@ -126,6 +128,10 @@ def set_modal_totals(items):
     with _state_lock:
         WEB_STATE["modal"] = {"kind": "totals", "items": items}
 
+def set_modal_stats(series):
+    with _state_lock:
+        WEB_STATE["modal"] = {"kind": "stats", "series": series}
+
 def clear_modal():
     with _state_lock:
         WEB_STATE["modal"] = None
@@ -133,6 +139,10 @@ def clear_modal():
 def set_last_round_summary(items_or_none):
     with _state_lock:
         WEB_STATE["last_round"] = items_or_none
+
+def set_theme(mode: str):
+    with _state_lock:
+        WEB_STATE["theme"] = "dark" if str(mode).lower() == "dark" else "light"
 
 def set_totals(players, totals_list):
     with _state_lock:
@@ -263,7 +273,7 @@ def apply_game_step(players, gm, goals, reached):
         particles = True
         token = gm[0] + gm[2:]   # doppeltes Prefix auf normales Kürzel reduzieren
 
-    if token[0] == 'l':
+    if token[0] == '.':
         idx = find_associating(players, token, False)
         if idx != -1:
             reached[idx] -= 1
@@ -336,6 +346,49 @@ def compute_totals_from_file(name, players):
 
 def existing_completed_rounds_count(name):
     return sum(1 for ln in open_wiz(name, 1) if ln.strip())
+
+def build_cumulative_series(name, players):
+    lines = open_wiz(name, 1)
+    totals_by_pref = {p[0]: 0 for p in players}
+    series = {p[0]: [0] for p in players}  # start at 0
+    round_idx = 0
+    for line in lines:
+        if not line.strip(): continue
+        round_idx += 1
+        for tok in line.split():
+            pref = tok[0]
+            try:
+                val = int(tok[1:])
+            except ValueError:
+                continue
+            if pref in totals_by_pref:
+                totals_by_pref[pref] += val
+        for pref in totals_by_pref:
+            series[pref].append(totals_by_pref[pref])
+    out = []
+    for pref, name in players:
+        disp = name.strip() or pref.upper()
+        out.append({"name": disp, "values": series.get(pref, [0])})
+    return out
+
+def print_help():
+    cmds = [
+        ("x", "Stapel holen"),
+        ("xn", "Ziel n setzen (n = Zahl)"),
+        ("xx", "Wizard-Event + Stapel"),
+        ("(Spaces)", "Ziel 0 für aktuellen Spieler"),
+        (".x", "Punkt abziehen"),
+        ("next", "Runde abschließen"),
+        ("view", "Totals anzeigen"),
+        ("stats", "Verlaufsgrafik anzeigen"),
+        ("start x", "Dealer für Runde 1 setzen"),
+        ("dark / light", "Theme umschalten"),
+        ("help", "Diese Hilfe"),
+        ("exit", "Beenden"),
+    ]
+    print(f"{WHITE}{BOLD}commands:{RESET}")
+    for cmd, desc in cmds:
+        print(f"  {WHITE}{cmd:<14}{RESET} {desc}")
 
 def show_totals_sorted(name, players):
     clear()
@@ -475,9 +528,25 @@ def gameplay_loop(name):
             input(f"{WHITE}(press enter to continue){RESET}")
             clear_modal()
 
+        elif inp == "help":
+            print_help()
+            input(f"{WHITE}(press enter to continue){RESET}")
+
+        elif inp == "stats":
+            series = build_cumulative_series(name, players)
+            set_modal_stats(series)
+            set_wait(False)
+            update_web_state(i, players, goals, reached)
+            input(f"{WHITE}(press enter to continue){RESET}")
+            clear_modal()
+
         elif inp == "exit":
             return
         else:
+            if inp in ("dark", "light"):
+                set_theme(inp)
+                update_web_state(i, players, goals, reached)
+                continue
             apply_game_step(players, inp_raw, goals, reached)
             update_web_state(i, players, goals, reached)
 
@@ -487,7 +556,7 @@ def gameplay_loop(name):
                 t = raw
                 if len(t) >= 2 and t[0] == t[1]:
                     t = t[0] + t[2:]
-                if t[0].lower() == 'l' and len(t) > 1:
+                if t[0] == '.' and len(t) > 1:
                     return find_associating(players, t, False)
                 return find_associating(players, t, True)
 

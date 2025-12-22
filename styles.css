@@ -5,6 +5,13 @@
   --radius:18px; --shadow:0 8px 24px rgba(16,24,40,.06);
 }
 
+:root[data-theme="dark"]{
+  --bg:#0b1220; --card:#0f172a; --text:#e5e7eb; --muted:#94a3b8;
+  --ok:#34d399; --over:#f87171; --under:#94a3b8;
+  --gold:#b88f2f; --gray:#1f2937;
+  --shadow:0 10px 32px rgba(0,0,0,.45);
+}
+
 /* reset / base */
 *{box-sizing:border-box}
 html,body{
@@ -20,7 +27,7 @@ html,body{
   position: static;
   display:flex; align-items:center; justify-content:center;
   margin:16px auto 8px;
-  font-weight:800; font-size:1.4rem; color:#000;
+  font-weight:800; font-size:1.4rem; color:var(--text);
   text-align:center;
 }
 #cardsHeader .label{opacity:.65; margin-right:6px}
@@ -52,6 +59,7 @@ html,body{
 .banner.red{background:#ffd6d6}
 .banner-inner{max-width:min(88vw,1200px); padding:12px}
 .banner-text{font-size:clamp(2.2rem, 6vw, 4.6rem); font-weight:900; text-align:center; color:#2b2f36}
+.banner-sub{font-size:clamp(1.1rem, 3.2vw, 1.5rem); font-weight:700; opacity:0.9; margin-top:4px}
 
 /* Totals-Modal (Overlay blur hier!) */
 .modal{
@@ -62,7 +70,7 @@ html,body{
 }
 .modal.show{display:grid}
 .modal-card{
-  width:min(860px,95vw); max-height:80vh; overflow:auto; background:#fff;
+  width:min(1400px,99vw); max-height:98vh; overflow:auto; background:#fff;
   border:1px solid #e9eef5; border-radius:18px; box-shadow:0 18px 48px rgba(16,24,40,.14);
   padding:16px 18px
 }
@@ -91,6 +99,43 @@ html,body{
 .wait-summary.hidden{display:none}
 .wait-summary h3{margin:6px 0 6px}
 
+.stats-wrap h2{margin:4px 0 12px; font-size:1.4rem}
+.stats-chart{width:100%; height:auto; display:block; margin-bottom:8px}
+.stats-legend{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+.stats-legend-item{display:flex; align-items:center; gap:6px; font-weight:600}
+.stats-legend-item .swatch{width:14px; height:14px; border-radius:4px; display:inline-block}
+
+/* Dark theme tweaks */
+:root[data-theme="dark"] #cardsHeader{color:var(--text)}
+:root[data-theme="dark"] .banner-text{color:#f8fafc}
+:root[data-theme="dark"] .modal{background:rgba(0,0,0,.45)}
+:root[data-theme="dark"] .modal-card{
+  background:var(--card);
+  border:1px solid #1f2937;
+  box-shadow:0 18px 48px rgba(0,0,0,.55);
+}
+:root[data-theme="dark"] .wait{
+  background:rgba(0,0,0,.45);
+}
+:root[data-theme="dark"] .wait-card{
+  background:var(--card);
+  border:1px solid #1f2937;
+  box-shadow:var(--shadow);
+}
+:root[data-theme="dark"] .spinner{
+  border-color:#1f2937;
+  border-top-color:#34d399;
+}
+:root[data-theme="dark"] .table thead th{border-bottom:1px solid #1f2937}
+:root[data-theme="dark"] .table tbody td{border-bottom:1px solid #1f2937}
+:root[data-theme="dark"] .badge-pos{background:#1f2937}
+:root[data-theme="dark"] .stats-legend-item .swatch{box-shadow:0 0 0 1px #0b1220}
+:root[data-theme="dark"] .banner.gray{background:#d3d8df}
+:root[data-theme="dark"] .banner.gold{background:#ffda6a}
+:root[data-theme="dark"] .banner.red{background:#ffd6d6}
+:root[data-theme="dark"] .banner-text{color:#2b2f36}
+:root[data-theme="dark"] .banner-sub{color:#2b2f36}
+
 /* Layout */
 #layout {
   display: flex;
@@ -107,7 +152,7 @@ html,body{
 #scoresPanel {
   flex: 0 0 30%;
   border-left: 1px solid #e9eef5;
-  background: #fff;
+  background: var(--card);
   padding: 12px;
   box-shadow: var(--shadow);
   overflow-y: auto;
@@ -117,6 +162,12 @@ html,body{
   margin: 0 0 8px;
   font-size: 1.2rem;
   font-weight: 800;
+}
+
+:root[data-theme="dark"] #scoresPanel{
+  border-left: 1px solid #1f2937;
+  background: var(--card);
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
 }
 
 /* Banner-Content */

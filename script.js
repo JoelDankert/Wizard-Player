@@ -12,6 +12,7 @@ const $wait = document.getElementById("wait");
 const $waitSummary = document.getElementById("waitSummary");
 const $waitBody = document.getElementById("waitBody");
 const $scoresBody = document.getElementById("scoresBody");
+const $root = document.documentElement;
 const sounds = {
     goal: new Audio("sounds/goal.mp3"),
     stack: new Audio("sounds/stack.mp3"),
@@ -23,6 +24,7 @@ const sounds = {
 
 let lastSeq = 0;
 let initialized = false;
+let latestState = null;
 
 // Queue für Events (alle nacheinander)
 const eventQueue = [];
@@ -79,6 +81,100 @@ function playSound(name, volume = 1.0) {
         clone.volume = volume;
         clone.play().catch(()=>{});
     }
+}
+function playGoalChimes(count, gapMs = 180){
+    const n = Math.max(0, Math.min(20, Number(count) || 0));
+    for (let i = 0; i < n; i++){
+        setTimeout(() => playSound("goal", 1), i * gapMs);
+    }
+}
+function renderStatsChart(modalState){
+    const wrap = el("div", "stats-wrap");
+    wrap.append(el("h2", null, "Verlauf – Statistik"));
+
+    const series = Array.isArray(modalState?.series) ? modalState.series : [];
+    if (!series.length){
+        wrap.append(el("div", "muted", "Keine Daten"));
+        return wrap;
+    }
+
+    const maxLen = Math.max(...series.map(s => (s.values || []).length));
+    const allVals = series.flatMap(s => s.values || []);
+    const maxV = Math.max(1, ...allVals);
+    const minV = Math.min(0, ...allVals);
+    const w = 1600, h = 640, pad = 80;
+    const colors = ["#2563eb","#16a34a","#d97706","#7c3aed","#dc2626","#0ea5e9","#f472b6"];
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    svg.classList.add("stats-chart");
+
+    const xFor = idx => {
+        const span = Math.max(1, maxLen - 1);
+        return pad + (idx / span) * (w - pad * 2);
+    };
+    const yFor = val => {
+        const span = Math.max(1, maxV - minV);
+        return h - pad - ((val - minV) / span) * (h - pad * 2);
+    };
+
+    // Axes
+    const axis = document.createElementNS(svg.namespaceURI, "path");
+    axis.setAttribute("d", `M ${pad} ${pad} V ${h-pad} H ${w-pad}`);
+    axis.setAttribute("stroke", "var(--muted)");
+    axis.setAttribute("fill", "none");
+    svg.append(axis);
+
+    // Horizontal grid
+    const steps = 5;
+    for (let i = 0; i <= steps; i++){
+        const yVal = minV + ((maxV - minV) * i / steps);
+        const y = yFor(yVal);
+        const grid = document.createElementNS(svg.namespaceURI, "line");
+        grid.setAttribute("x1", pad);
+        grid.setAttribute("x2", w - pad);
+        grid.setAttribute("y1", y);
+        grid.setAttribute("y2", y);
+        grid.setAttribute("stroke", "var(--muted)");
+        grid.setAttribute("stroke-opacity", "0.3");
+        svg.append(grid);
+
+        const label = document.createElementNS(svg.namespaceURI, "text");
+        label.setAttribute("x", pad - 10);
+        label.setAttribute("y", y + 4);
+        label.setAttribute("text-anchor", "end");
+        label.setAttribute("fill", "var(--text)");
+        label.setAttribute("font-size", "12");
+        label.textContent = Math.round(yVal);
+        svg.append(label);
+    }
+
+    // Series lines
+    series.forEach((s, idx) => {
+        const vals = s.values || [];
+        if (!vals.length) return;
+        const pts = vals.map((v, i) => `${xFor(i)},${yFor(v)}`).join(" ");
+        const path = document.createElementNS(svg.namespaceURI, "polyline");
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", colors[idx % colors.length]);
+        path.setAttribute("stroke-width", "3");
+        path.setAttribute("points", pts);
+        svg.append(path);
+    });
+
+    wrap.append(svg);
+
+    const legend = el("div", "stats-legend");
+    series.forEach((s, idx) => {
+        const item = el("div", "stats-legend-item");
+        const swatch = el("span", "swatch");
+        swatch.style.background = colors[idx % colors.length];
+        const label = stripLeadingEmoji(String(s.name || ""));
+        item.append(swatch, el("span", null, label || "?"));
+        legend.append(item);
+    });
+    wrap.append(legend);
+    return wrap;
 }
 function el(tag, cls, text){
     const e = document.createElement(tag);
@@ -243,6 +339,10 @@ function renderStandingsTable(targetEl, rows, {
 }
 /* ————— Render ————— */
 function render(state){
+    latestState = state;
+    const theme = state.theme === "dark" ? "dark" : "light";
+    $root.dataset.theme = theme;
+
     // Karten-Header + Stiche-Anzeige
     const totalGoals = (state.goals || []).reduce((a, b) => a + (b || 0), 0);
     const cardsVal = state.cards ?? "–";
@@ -371,6 +471,10 @@ function render(state){
             podiumColors: true
         });
         $modal.classList.add("show");
+    } else if (state.modal && state.modal.kind === "stats") {
+        $modalContent.textContent = "";
+        $modalContent.append(renderStatsChart(state.modal));
+        $modal.classList.add("show");
     } else {
         $modal.classList.remove("show");
     }
@@ -460,7 +564,17 @@ function showNextBanner() {
         }
         $bannerText.textContent = "";
         if (avatar) $bannerText.append(el("div", "banner-avatar", avatar));
-        $bannerText.append(el("div", "banner-message", msgText));
+        const msgEl = el("div", "banner-message", msgText);
+        if (/zielt/i.test(e.text)) {
+            const st = latestState || {};
+            const totalGoals = (st.goals || []).reduce((a, b) => a + (b || 0), 0);
+            const cardsCount = Number(st.cards);
+            if (Number.isFinite(cardsCount)) {
+                const sub = el("div", "banner-sub", `${totalGoals} von ${cardsCount} Stiche vergeben`);
+                msgEl.append(sub);
+            }
+        }
+        $bannerText.append(msgEl);
 
         if (/nimmt den Stapel/i.test(e.text)) playSound("stack", 1);
         else if (/Stiche erreicht/i.test(e.text)) { playSound("stack",1); playSound("applause",0.2);}
@@ -468,7 +582,7 @@ function showNextBanner() {
         else if (/zielt/i.test(e.text)) {
             const match = e.text.match(/\d+/);
             const count = match ? parseInt(match[0], 10) : 0;
-            for (let i = 0; i < count; i++) setTimeout(() => playSound("goal",1), i*100);
+            playGoalChimes(count);
         }
 
         if (hideTimer) clearTimeout(hideTimer);
