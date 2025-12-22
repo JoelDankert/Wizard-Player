@@ -320,7 +320,8 @@ function render(state){
         if (dealerMsg) {
             if (dealerName) {
                 let maxRounds = Math.floor(60 / players.length);
-                dealerMsg.textContent = `${cardsVal} / ${maxRounds}\n${dealerName} verteilt ${cardsVal} Karten...`;
+                const karteWort = cardsVal === 1 ? "Karte" : "Karten";
+                dealerMsg.textContent = `${cardsVal} / ${maxRounds}\n${dealerName} verteilt ${cardsVal} ${karteWort}...`;
                 dealerMsg.classList.remove("hidden");
             } else {
                 dealerMsg.textContent = "";
