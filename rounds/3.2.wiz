@@ -1,8 +1,17 @@
 x 🤖Joel
-r 🌎Ricky
-g 🥗Gabi
 i 🧚Ingrid
-j 🦌Jörg
-l 🎀Lisa
+g 🥗Gabi
 t 🧙Thomas
+l 🎀Lisa
+r 🌎Ricky
 
+x30 i-10 g20 t20 l20 r20
+x30 i30 g20 t-10 l-10 r20
+x20 i-10 g20 t-10 l20 r30
+x30 i20 g30 t-10 l-10 r20
+x20 i30 g-10 t-10 l30 r30
+x40 i30 g40 t-10 l20 r30
+x30 i40 g40 t30 l20 r30
+x20 i40 g40 t40 l-60 r-10
+x-10 i60 g-10 t-20 l-20 r40
+x-10 i-10 g-10 t-20 l-10 r40
