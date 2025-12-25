@@ -524,7 +524,6 @@ def gameplay_loop(name):
 
         elif inp == "view":
             show_totals_sorted(name, players)
-            autoselect_idx = (autoselect_idx + 1)%len(players)
             input(f"{WHITE}(press enter to continue){RESET}")
             clear_modal()
 

@@ -296,8 +296,8 @@ function renderStandingsTable(targetEl, rows, {
         if (showRound) {
             const v = Number(row.round_score ?? 0);
             const roundScoreTd = el("td", "mono", `${v >= 0 ? "+" : ""}${v}`);
-            if (v > 0) roundScoreTd.style.color = "#146414";
-            else if (v < 0) roundScoreTd.style.color = "#8a1212";
+            if (v > 0) roundScoreTd.style.color = "var(--score-pos)";
+            else if (v < 0) roundScoreTd.style.color = "var(--score-neg)";
 
             if (scoreIndicators.length) {
                 roundScoreTd.textContent += " " + scoreIndicators.join(" ");
