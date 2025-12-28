@@ -601,6 +601,7 @@ def gameplay_loop(name):
             set_modal_stats(series)
             set_wait(False)
             update_web_state(i, players, goals, reached)
+            render(i, players, goals, reached)  # ensure terminal refresh
             skip_render = True
             modal_open = True
 

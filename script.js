@@ -141,10 +141,11 @@ function renderStatsChart(modalState){
 
         const label = document.createElementNS(svg.namespaceURI, "text");
         label.setAttribute("x", pad - 10);
-        label.setAttribute("y", y + 4);
+        label.setAttribute("y", y + 6);
         label.setAttribute("text-anchor", "end");
         label.setAttribute("fill", "var(--text)");
-        label.setAttribute("font-size", "12");
+        label.setAttribute("font-size", "18");
+        label.setAttribute("font-weight", "800");
         label.textContent = Math.round(yVal);
         svg.append(label);
     }
@@ -345,7 +346,8 @@ function render(state){
 
     // Karten-Header + Stiche-Anzeige
     const totalGoals = (state.goals || []).reduce((a, b) => a + (b || 0), 0);
-    const cardsVal = state.cards ?? "–";
+    const cardsCount = Number(state.cards);
+    const cardsVal = Number.isFinite(cardsCount) ? cardsCount : "–";
 
     // Nur Dealer (kein Starter mehr anzeigen)
     const dealerName = state.dealer
@@ -365,8 +367,8 @@ function render(state){
     let maxRounds = Math.floor(60 / players.length);
     let text = `Runde: ${cardsVal} / ${maxRounds}`;
 
-    if (state.cards && state.goals && state.goals.length) {
-        text += `&nbsp;&nbsp;&nbsp;Stiche: ${totalGoals}`;
+    if (Number.isFinite(cardsCount) && state.goals && state.goals.length) {
+        text += `&nbsp;&nbsp;&nbsp;Stiche: ${totalGoals} / ${cardsCount}`;
     }
 
     $cards.innerHTML = text;
