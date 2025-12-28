@@ -250,19 +250,6 @@ def open_wiz(name, ind):
     if len(parts) < 2: parts.append("")
     return parts[ind].splitlines()
 
-def init_game(n):
-    players = []
-    while True:
-        name = input("player:\n> ").strip()
-        if not name: break
-        short = input("p:\n> ").strip()
-        players.append((short, name))
-    os.makedirs("rounds", exist_ok=True)
-    with open(f"rounds/{n}.wiz", "w", encoding="utf-8") as f:
-        for short, name in players: f.write(f"{short} {name}\n")
-        f.write("\n")
-    print("done.")
-
 def append_game(name, game):
     filename = f"rounds/{name}.wiz"
     with open(filename, "r", encoding="utf-8") as f: content = f.read()
@@ -634,9 +621,6 @@ def gameplay_loop(name):
 # --- ENTRY ---
 start_web_server()
 time.sleep(1)
-act = input("action?\n> ").strip()
-if act == "n":
-    init_game(input("title\n> ").strip())
-elif act == "p":
-    name = input("title\n> ").strip()
-    gameplay_loop(name)
+# Always start in play mode; new-game creation removed from prompt
+name = input("title\n> ").strip()
+gameplay_loop(name)
