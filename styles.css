@@ -46,11 +46,28 @@ html,body{
   padding:18px 18px 16px; display:flex; flex-direction:column; gap:12px;
   min-height:210px;
   --pulse-rgb:37,99,235; /* default blue */
+  position:relative;
+  z-index:0; /* create stacking context for pseudo pulse */
+}
+.player::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  box-shadow:0 0 0 0 rgba(var(--pulse-rgb),0.55), 0 0 22px 8px rgba(var(--pulse-rgb),0.3);
+  animation:pulseGlow 3s ease-in-out infinite;
+  animation-play-state: paused;
+  opacity:0;
+  transition: opacity 220ms ease-in-out;
+  pointer-events:none;
+  z-index:-1;
 }
 .player.pulse{
-  position:relative;
   z-index:3;
-  animation:pulseGlow 2s ease-in-out infinite;
+}
+.player.pulse::after{
+  opacity:1;
+  animation-play-state: running;
 }
 .pulse-blue{--pulse-rgb:37,99,235;}
 .pulse-gold{--pulse-rgb:209,156,28;}

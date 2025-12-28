@@ -195,6 +195,29 @@ function nameKey(s){
     return normalizeName(s).toLowerCase();
 }
 
+// Cache player cards so animations (pulse) don't restart every poll
+const playerCardCache = new Map();
+function getPlayerCard(key){
+    let entry = playerCardCache.get(key);
+    if (entry) return entry;
+
+    const card = el("article", "player");
+    const nameEl = el("div", "name");
+    const box = el("div", "player-box");
+    const stats = el("div", "stats");
+    const fractionEl = el("div", "bigfraction");
+    const roundpointsEl = el("div", "roundpoints mono");
+    const avatarEl = el("div", "avatar");
+
+    stats.append(fractionEl, roundpointsEl);
+    box.append(stats, avatarEl);
+    card.append(nameEl, box);
+
+    entry = { card, nameEl, fractionEl, roundpointsEl, avatarEl };
+    playerCardCache.set(key, entry);
+    return entry;
+}
+
 function renderStandingsTable(targetEl, rows, {
     showRound = false,
     title = null,
@@ -384,7 +407,7 @@ function render(state){
     const preview = state.preview_scores || [];
 
     // Render Player cards
-    $players.textContent = "";
+    const seenKeys = new Set();
     for (let idx = 0; idx < players.length; idx++){
         const p = players[idx];
 
@@ -409,19 +432,45 @@ function render(state){
             displayName = p.name.slice(emojiMatch[0].length).trim();
         }
 
-        const card = el("article", "player");
-        card.append(el("div", "name", displayName));
+        const playerKey = nameKey(p.name || p.pref || `idx-${originalIndex}`);
+        const cardParts = getPlayerCard(playerKey);
 
-        const box = el("div", "player-box");
-        const stats = el("div", "stats");
-        stats.append(el("div", `bigfraction ${fractionClass(p.goal, p.reached)}`, `${p.reached}/${p.goal}`));
-        stats.append(el("div", "roundpoints mono", `${rp >= 0 ? "+" : ""}${rp}`));
-        box.append(stats);
-        if (avatar) box.append(el("div", "avatar", avatar));
-        card.append(box);
-        if (isActive) card.classList.add("pulse", "pulse-blue", "active");
-        if (isPulse) card.classList.add("pulse", pulseColor === "gold" ? "pulse-gold" : "pulse-blue");
-        $players.append(card);
+        cardParts.nameEl.textContent = displayName;
+        cardParts.fractionEl.className = `bigfraction ${fractionClass(p.goal, p.reached)}`;
+        cardParts.fractionEl.textContent = `${p.reached}/${p.goal}`;
+        cardParts.roundpointsEl.textContent = `${rp >= 0 ? "+" : ""}${rp}`;
+
+        if (avatar) {
+            cardParts.avatarEl.textContent = avatar;
+            cardParts.avatarEl.style.display = "block";
+        } else {
+            cardParts.avatarEl.textContent = "";
+            cardParts.avatarEl.style.display = "none";
+        }
+
+        const card = cardParts.card;
+        const pulseBlue = isActive || (isPulse && pulseColor !== "gold");
+        const pulseGold = isPulse && pulseColor === "gold";
+        const pulsing = isActive || isPulse;
+
+        card.classList.toggle("active", isActive);
+        card.classList.toggle("pulse", pulsing);
+        card.classList.toggle("pulse-blue", pulseBlue);
+        card.classList.toggle("pulse-gold", pulseGold);
+        card.style.order = idx; // keep visual order without reparenting
+
+        if (!card.parentNode) {
+            $players.append(card);
+        }
+        seenKeys.add(playerKey);
+    }
+
+    // Remove cards that are no longer present
+    for (const [key, entry] of playerCardCache.entries()){
+        if (!seenKeys.has(key)){
+            entry.card.remove();
+            playerCardCache.delete(key);
+        }
     }
 
     // Wartescreen

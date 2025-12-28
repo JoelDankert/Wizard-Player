@@ -206,7 +206,7 @@ def set_pulse(idx=None, color=None, duration=5):
 def reset_goal_flags(players):
     global _goal_set_flags
     _goal_set_flags = [False for _ in players]
-    set_highlight(True)
+    set_highlight(False)
 
 def mark_goal_set(idx, players):
     global _goal_set_flags
@@ -216,6 +216,8 @@ def mark_goal_set(idx, players):
         reset_goal_flags(players)
     if idx < len(_goal_set_flags):
         _goal_set_flags[idx] = True
+    if not _highlight_on:
+        set_highlight(True)
     if all(_goal_set_flags) and _goal_set_flags:
         set_highlight(False)
 
@@ -671,6 +673,7 @@ def gameplay_loop(name):
             parts = inp.split()
             if is_wait_active():
                 set_wait(False)
+                set_highlight(True)
                 update_web_state(i, players, goals, reached)
                 continue
             if len(parts) >= 2:
