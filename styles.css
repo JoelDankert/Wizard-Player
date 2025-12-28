@@ -44,7 +44,22 @@ html,body{
 .player{
   background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
   padding:18px 18px 16px; display:flex; flex-direction:column; gap:12px;
-  min-height:210px
+  min-height:210px;
+  --pulse-rgb:37,99,235; /* default blue */
+}
+.player.pulse{
+  position:relative;
+  z-index:3;
+  animation:pulseGlow 2s ease-in-out infinite;
+}
+.pulse-blue{--pulse-rgb:37,99,235;}
+.pulse-gold{--pulse-rgb:209,156,28;}
+@keyframes pulseGlow{
+  0%{box-shadow:0 0 0 0 rgba(var(--pulse-rgb),0.55), 0 0 22px 8px rgba(var(--pulse-rgb),0.3);}
+  25%{box-shadow:0 0 0 20px rgba(var(--pulse-rgb),0.26), 0 0 38px 14px rgba(var(--pulse-rgb),0.22);}
+  50%{box-shadow:0 0 0 0 rgba(var(--pulse-rgb),0.5), 0 0 16px 6px rgba(var(--pulse-rgb),0.28);}
+  75%{box-shadow:0 0 0 20px rgba(var(--pulse-rgb),0.24), 0 0 34px 12px rgba(var(--pulse-rgb),0.2);}
+  100%{box-shadow:0 0 0 0 rgba(var(--pulse-rgb),0.55), 0 0 22px 8px rgba(var(--pulse-rgb),0.3);}
 }
 .player .name{font-weight:900; font-size:2.2rem}
 .bigfraction{font-weight:900; font-size:4.4rem; line-height:1.05}
@@ -55,15 +70,30 @@ html,body{
 .roundpoints{font-size:1.4rem; color:var(--muted); font-weight:800}
 .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
 
-/* Vollflächiger Event-Banner */
-.banner{position:fixed; inset:0; display:none; place-items:center; z-index:60}
+/* Compact Event Popover */
+.banner{
+  position:fixed; inset:0; display:none; place-items:center; z-index:60;
+  pointer-events:none; padding:24px; box-sizing:border-box;
+  background:rgba(0,0,0,0.25);
+}
+:root[data-theme="dark"] .banner{
+  background:rgba(0,0,0,0.4);
+}
 .banner.show{display:grid}
-.banner.gray{background:var(--gray)}
-.banner.gold{background:var(--gold)}
-.banner.red{background:#ffd6d6}
-.banner-inner{max-width:min(88vw,1200px); padding:12px}
-.banner-text{font-size:clamp(2.2rem, 6vw, 4.6rem); font-weight:900; text-align:center; color:#2b2f36}
-.banner-sub{font-size:clamp(1.1rem, 3.2vw, 1.5rem); font-weight:700; opacity:0.9; margin-top:4px}
+.banner.gray .banner-inner{background:linear-gradient(135deg, #dfe6f3, #eef3fb);}
+.banner.gold .banner-inner{background:linear-gradient(135deg, #ffd977, #ffe8a8);}
+.banner.red .banner-inner{background:linear-gradient(135deg, #ffb6c5, #ffd6e0);}
+.banner-inner{
+  max-width:min(92vw,1100px);
+  padding:42px 48px;
+  border-radius:20px;
+  box-shadow:0 12px 36px rgba(15,23,42,.24);
+  border:1px solid rgba(15,23,42,.08);
+  margin:0 auto;
+  pointer-events:auto;
+}
+.banner-text{font-size:clamp(1.8rem, 4vw, 3.2rem); font-weight:900; text-align:center; color:#2b2f36}
+.banner-sub{font-size:clamp(1rem, 2.6vw, 1.4rem); font-weight:700; opacity:0.9; margin-top:10px}
 
 /* Totals-Modal (Overlay blur hier!) */
 .modal{
@@ -134,9 +164,6 @@ html,body{
 :root[data-theme="dark"] .table tbody td{border-bottom:1px solid #1f2937}
 :root[data-theme="dark"] .badge-pos{background:#1f2937}
 :root[data-theme="dark"] .stats-legend-item .swatch{box-shadow:0 0 0 1px #0b1220}
-:root[data-theme="dark"] .banner.gray{background:#d3d8df}
-:root[data-theme="dark"] .banner.gold{background:#ffda6a}
-:root[data-theme="dark"] .banner.red{background:#ffd6d6}
 :root[data-theme="dark"] .banner-text{color:#2b2f36}
 :root[data-theme="dark"] .banner-sub{color:#2b2f36}
 

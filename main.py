@@ -33,11 +33,17 @@ WEB_STATE = {
     "starter": None,        # {"index": int, "pref": str, "name": str}
     "theme": "dark",        # "light" | "dark"
     "stats": None,          # reserved
+    "active_idx": None,     # current autoselect index
+    "highlight": True,      # whether to pulse active player
 }
 _state_lock = threading.Lock()
 _event_seq = 0
 _command_queue = Queue()
 _stdin_reader_started = False
+_active_idx = None
+_highlight_on = True
+_goal_set_flags = []
+_pulse_info = None
 
 # --- NEW: Global base index for round-1 dealer (0-based) ---
 _start_dealer_index = 0
@@ -100,6 +106,11 @@ def score_preview_with_bonus(goals, reached):
 def update_web_state(cards, players, goals, reached):
     # --- extended: also compute dealer & starter based on FILE ORDER and base index
     dealer, starter = _compute_dealer_and_starter(cards, players)
+    # expire pulse if needed
+    global _pulse_info
+    with _state_lock:
+        if _pulse_info and _pulse_info.get("expires", 0) < time.time():
+            _pulse_info = None
     with _state_lock:
         WEB_STATE["cards"] = cards
         WEB_STATE["players"] = _ensure_players_for_web(players)  # preserves file order as provided
@@ -108,6 +119,9 @@ def update_web_state(cards, players, goals, reached):
         WEB_STATE["preview_scores"] = score_preview_with_bonus(goals, reached)
         WEB_STATE["dealer"] = dealer
         WEB_STATE["starter"] = starter
+        WEB_STATE["active_idx"] = _active_idx
+        WEB_STATE["highlight"] = _highlight_on
+        WEB_STATE["pulse"] = dict(_pulse_info) if _pulse_info else None
 
 def push_event(text, color="gray", particles=False):
     global _event_seq
@@ -164,6 +178,50 @@ def enqueue_command(source, text):
         "source": source,
         "text": str(text or "")
     })
+
+def set_active_index(idx):
+    global _active_idx
+    with _state_lock:
+        _active_idx = int(idx) if idx is not None else None
+        WEB_STATE["active_idx"] = _active_idx
+
+def set_highlight(flag: bool):
+    global _highlight_on
+    with _state_lock:
+        _highlight_on = bool(flag)
+        WEB_STATE["highlight"] = _highlight_on
+
+def set_pulse(idx=None, color=None, duration=5):
+    """Set a temporary pulse highlight for a player."""
+    global _pulse_info
+    with _state_lock:
+        if idx is None or color is None:
+            _pulse_info = None
+            WEB_STATE["pulse"] = None
+            return
+        expires = time.time() + max(0.1, duration)
+        _pulse_info = {"idx": int(idx), "color": str(color), "expires": expires}
+        WEB_STATE["pulse"] = dict(_pulse_info)
+
+def reset_goal_flags(players):
+    global _goal_set_flags
+    _goal_set_flags = [False for _ in players]
+    set_highlight(True)
+
+def mark_goal_set(idx, players):
+    global _goal_set_flags
+    if idx is None or idx < 0 or idx >= len(players):
+        return
+    if not _goal_set_flags:
+        reset_goal_flags(players)
+    if idx < len(_goal_set_flags):
+        _goal_set_flags[idx] = True
+    if all(_goal_set_flags) and _goal_set_flags:
+        set_highlight(False)
+
+def is_wait_active():
+    with _state_lock:
+        return bool(WEB_STATE.get("wait"))
 
 # ----- HTTP -----
 class WizHandler(BaseHTTPRequestHandler):
@@ -287,7 +345,7 @@ def push_event_token(template, color, players, idx):
 
 def apply_game_step(players, gm, goals, reached):
     if not gm:
-        return
+        return None
 
     # check auf "jj" (Partikel-Event)
     particles = False
@@ -302,11 +360,11 @@ def apply_game_step(players, gm, goals, reached):
             reached[idx] -= 1
             push_event_token("{spieler} Punkt verloren", "red", players, idx)
             set_wait(False)
-        return
+        return None
 
     idx = find_associating(players, token, True)
     if idx == -1:
-        return
+        return None
 
     if not token[1:].isdigit():
         # Stapelaufnahme
@@ -324,12 +382,17 @@ def apply_game_step(players, gm, goals, reached):
 
         push_event(text, "gold", particles=particles)   # <--- hier Flag setzen
         set_wait(False)
+        set_pulse(idx, "gold", duration=5)
+        set_highlight(False)
 
     else:
         # Zielansage
-        goals[idx] = int(token[1:])
+        goals[idx] = int(token[1:] or 0)
         push_event_token("{spieler} zielt " + str(goals[idx]) + " Stiche an", "gray", players, idx)
         set_wait(False)
+        return idx
+
+    return None
 
 
 def render(cards, players, goals, reached):
@@ -484,8 +547,18 @@ def start_stdin_reader():
             enqueue_command("terminal", line.rstrip("\n"))
     threading.Thread(target=run, daemon=True).start()
 
+def find_player_index_by_pref(pref_token, players):
+    token = str(pref_token or "").strip().lower()
+    if not token:
+        return -1
+    for idx, p in enumerate(players):
+        if str(p[0]).strip().lower() == token:
+            return idx
+    return -1
+
 # --- MAIN LOOP ---
 def gameplay_loop(name):
+    global _highlight_on
     players = init_var_players(name)  # FILE ORDER preserved here
     completed = existing_completed_rounds_count(name)
     i = completed + 1
@@ -493,9 +566,12 @@ def gameplay_loop(name):
 
     set_wait(True)
     set_last_round_summary(None)
-    update_web_state(i, players, goals, reached)
     dealer, starter = _compute_dealer_and_starter(i, players)
     autoselect_idx = starter["index"] if starter else 0
+    reset_goal_flags(players)
+    set_active_index(autoselect_idx)
+    set_pulse(None, None)
+    update_web_state(i, players, goals, reached)
     recompute_and_push_totals(name, players)
 
     print(players)
@@ -537,10 +613,13 @@ def gameplay_loop(name):
             goals[autoselect_idx] = spaces
             push_event_token("{spieler} zielt " + str(spaces) + " Stiche an", "gray", players, autoselect_idx)
             set_wait(False)
+            set_active_index(autoselect_idx)
+            mark_goal_set(autoselect_idx, players)
             update_web_state(i, players, goals, reached)
 
             # advance auto-select to next player in file order
             autoselect_idx = (autoselect_idx + 1) % len(players)
+            set_active_index(autoselect_idx)
             continue        
         if inp.startswith("start"):
             parts = inp.split()
@@ -549,9 +628,11 @@ def gameplay_loop(name):
                 idx = next((k for k, p in enumerate(players) if str(p[0]).strip().lower() == pref_token), -1)
                 if idx != -1:
                     set_start_dealer_index(idx, players)
+                    set_active_index(autoselect_idx)
                     update_web_state(i, players, goals, reached)
                     dealer, starter = _compute_dealer_and_starter(i, players)
                     autoselect_idx = (starter["index"] if starter else 0)
+                    set_active_index(autoselect_idx)
             continue
 
         if inp == "next":
@@ -563,11 +644,14 @@ def gameplay_loop(name):
             recompute_and_push_totals(name, players)
             goals, reached = build_initial_state(players)  # reset
             i += 1
-            update_web_state(i, players, goals, reached)  # updates dealer/starter for upcoming round
             set_wait(True)
 
             dealer, _starter = _compute_dealer_and_starter(i, players)
             autoselect_idx = (_starter["index"] if _starter else 0)
+            reset_goal_flags(players)
+            set_active_index(autoselect_idx)
+            set_pulse(None, None)
+            update_web_state(i, players, goals, reached)  # updates dealer/starter/highlight for upcoming round
             if dealer:
                 push_event(f"Nächste Runde gestartet – Geber: {dealer['name']} (Karten: {i})", "gray")
             else:
@@ -583,6 +667,25 @@ def gameplay_loop(name):
             print_help()
             skip_render = True
 
+        elif inp.startswith("mark"):
+            parts = inp.split()
+            if is_wait_active():
+                set_wait(False)
+                update_web_state(i, players, goals, reached)
+                continue
+            if len(parts) >= 2:
+                tgt_idx = find_player_index_by_pref(parts[1], players)
+                if tgt_idx != -1:
+                    autoselect_idx = tgt_idx
+                    set_active_index(autoselect_idx)
+                    set_highlight(True)
+                    update_web_state(i, players, goals, reached)
+                    continue
+            set_highlight(not _highlight_on)
+            set_active_index(autoselect_idx)
+            update_web_state(i, players, goals, reached)
+            continue
+
         elif inp == "stats":
             series = build_cumulative_series(name, players)
             set_modal_stats(series)
@@ -597,9 +700,12 @@ def gameplay_loop(name):
         else:
             if inp in ("dark", "light"):
                 set_theme(inp)
+                set_active_index(autoselect_idx)
                 update_web_state(i, players, goals, reached)
                 continue
-            apply_game_step(players, inp_raw, goals, reached)
+            goal_set_idx = apply_game_step(players, inp_raw, goals, reached)
+            if goal_set_idx is not None:
+                mark_goal_set(goal_set_idx, players)
             update_web_state(i, players, goals, reached)
 
             def _resolve_target_index(raw):
@@ -615,8 +721,10 @@ def gameplay_loop(name):
             tgt = _resolve_target_index(inp_raw.strip())
             if tgt != -1 and players:
                 autoselect_idx = (tgt + 1) % len(players)
+                set_active_index(autoselect_idx)
             elif players:
                 autoselect_idx = (autoselect_idx + 1) % len(players)
+                set_active_index(autoselect_idx)
 
 # --- ENTRY ---
 start_web_server()

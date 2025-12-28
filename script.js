@@ -348,6 +348,13 @@ function render(state){
     const totalGoals = (state.goals || []).reduce((a, b) => a + (b || 0), 0);
     const cardsCount = Number(state.cards);
     const cardsVal = Number.isFinite(cardsCount) ? cardsCount : "–";
+    const activeIdx = Number.isInteger(state.active_idx) ? state.active_idx : -1;
+    const highlightOn = state.highlight !== false;
+    const pulseState = state.pulse || null;
+    const nowSec = Date.now() / 1000;
+    const pulseActive = pulseState && Number(pulseState.expires || 0) > nowSec;
+    const pulseIdx = pulseActive ? Number(pulseState.idx) : -1;
+    const pulseColor = pulseActive ? String(pulseState.color || "") : "";
 
     // Nur Dealer (kein Starter mehr anzeigen)
     const dealerName = state.dealer
@@ -390,6 +397,8 @@ function render(state){
         });
 
         const rp = preview[originalIndex >= 0 ? originalIndex : idx] ?? 0;
+        const isActive = highlightOn && originalIndex === activeIdx;
+        const isPulse = pulseActive && originalIndex === pulseIdx;
 
         // Emoji vom Namen trennen (optional)
         const emojiMatch = p.name.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u);
@@ -410,6 +419,8 @@ function render(state){
         box.append(stats);
         if (avatar) box.append(el("div", "avatar", avatar));
         card.append(box);
+        if (isActive) card.classList.add("pulse", "pulse-blue", "active");
+        if (isPulse) card.classList.add("pulse", pulseColor === "gold" ? "pulse-gold" : "pulse-blue");
         $players.append(card);
     }
 
