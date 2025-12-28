@@ -652,3 +652,38 @@ function toggleFullscreen(){
 
 // Ein Tap/Klick irgendwo im View toggelt Fullscreen
 document.addEventListener("click", toggleFullscreen, { passive: true });
+
+// Global key capture for commands (invisible)
+let cmdBuffer = "";
+async function sendCommand(cmd){
+    try {
+        await fetch("/command", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ command: cmd })
+        });
+    } catch (_) {
+        /* ignore; polling keeps UI alive */
+    }
+}
+document.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "Enter") {
+        e.preventDefault();
+        sendCommand(cmdBuffer);
+        cmdBuffer = "";
+        return;
+    }
+    if (e.key === "Backspace") {
+        e.preventDefault();
+        cmdBuffer = cmdBuffer.slice(0, -1);
+        return;
+    }
+    if (e.key === "Escape") {
+        cmdBuffer = "";
+        return;
+    }
+    if (e.key.length === 1) {
+        cmdBuffer += e.key;
+    }
+}, { capture: true });

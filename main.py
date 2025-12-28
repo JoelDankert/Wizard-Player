@@ -1,8 +1,9 @@
-import os, threading, time, json
+import os, threading, time, json, sys
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlsplit
 from pathlib import Path
 import time
+from queue import Queue
 
 # --- SCORING ---
 OFF_PENALTY = 10
@@ -35,6 +36,8 @@ WEB_STATE = {
 }
 _state_lock = threading.Lock()
 _event_seq = 0
+_command_queue = Queue()
+_stdin_reader_started = False
 
 # --- NEW: Global base index for round-1 dealer (0-based) ---
 _start_dealer_index = 0
@@ -155,6 +158,13 @@ def recompute_and_push_totals(name, players):
     totals = compute_totals_from_file(name, players)
     set_totals(players, totals)
 
+def enqueue_command(source, text):
+    # Unified command ingestion from terminal/web
+    _command_queue.put({
+        "source": source,
+        "text": str(text or "")
+    })
+
 # ----- HTTP -----
 class WizHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args): return
@@ -196,6 +206,32 @@ class WizHandler(BaseHTTPRequestHandler):
             return self._send_bytes(200, json.dumps(snapshot, ensure_ascii=False).encode("utf-8"),
                                     "application/json; charset=utf-8")
         self.send_response(404); self.end_headers()
+
+    def do_POST(self):
+        path = urlsplit(self.path).path
+        if path != "/command":
+            self.send_response(404); self.end_headers(); return
+
+        length = int(self.headers.get("Content-Length", "0") or 0)
+        raw = self.rfile.read(length) if length > 0 else b""
+        cmd = ""
+        ctype = (self.headers.get("Content-Type") or "").lower()
+        try:
+            if "application/json" in ctype:
+                obj = json.loads(raw.decode("utf-8") or "{}")
+                if isinstance(obj, dict):
+                    cmd = str(obj.get("command", "") or "")
+            else:
+                cmd = raw.decode("utf-8")
+        except Exception:
+            cmd = ""
+
+        cmd = cmd.rstrip("\n")
+        if len(cmd) > 128:
+            return self._send_bytes(400, b'{"error":"too_long"}', "application/json; charset=utf-8")
+
+        enqueue_command("web", cmd)
+        return self._send_bytes(202, b'{"status":"queued"}', "application/json; charset=utf-8")
 
 def start_web_server():
     def run():
@@ -451,6 +487,16 @@ def set_start_dealer_index(idx, players):
     n = max(1, len(players))
     _start_dealer_index = int(idx) % n
 
+def start_stdin_reader():
+    global _stdin_reader_started
+    if _stdin_reader_started:
+        return
+    _stdin_reader_started = True
+    def run():
+        for line in sys.stdin:
+            enqueue_command("terminal", line.rstrip("\n"))
+    threading.Thread(target=run, daemon=True).start()
+
 # --- MAIN LOOP ---
 def gameplay_loop(name):
     players = init_var_players(name)  # FILE ORDER preserved here
@@ -466,8 +512,14 @@ def gameplay_loop(name):
     recompute_and_push_totals(name, players)
 
     print(players)
+    start_stdin_reader()
+    skip_render = False
+    modal_open = False
     while 1:
-        render(i, players, goals, reached)
+        if not skip_render:
+            render(i, players, goals, reached)
+        else:
+            skip_render = False
 
         try:
             current_pref = players[autoselect_idx][0]
@@ -476,8 +528,21 @@ def gameplay_loop(name):
             current_pref = players[0][0] if players else ""
 
         print(f"(autoselect: {current_pref})")
-        inp_raw = input("> ")
+        print("> ", end="", flush=True)
+        cmd = _command_queue.get()
+        inp_raw = cmd.get("text", "") if isinstance(cmd, dict) else str(cmd or "")
+        source = cmd.get("source", "terminal") if isinstance(cmd, dict) else "terminal"
         inp = inp_raw.strip().lower()
+
+        # If a modal is open and user submits an empty command, just close the modal.
+        if modal_open and inp == "":
+            clear_modal()
+            modal_open = False
+            continue
+
+        if modal_open and inp not in ("view", "stats"):
+            clear_modal()
+            modal_open = False
 
         if inp == "" and players:
             # number of spaces is the intended tricks; empty line means 0
@@ -524,20 +589,20 @@ def gameplay_loop(name):
 
         elif inp == "view":
             show_totals_sorted(name, players)
-            input(f"{WHITE}(press enter to continue){RESET}")
-            clear_modal()
+            skip_render = True
+            modal_open = True
 
         elif inp == "help":
             print_help()
-            input(f"{WHITE}(press enter to continue){RESET}")
+            skip_render = True
 
         elif inp == "stats":
             series = build_cumulative_series(name, players)
             set_modal_stats(series)
             set_wait(False)
             update_web_state(i, players, goals, reached)
-            input(f"{WHITE}(press enter to continue){RESET}")
-            clear_modal()
+            skip_render = True
+            modal_open = True
 
         elif inp == "exit":
             return
