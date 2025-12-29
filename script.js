@@ -449,17 +449,21 @@ function render(state){
         }
 
         const card = cardParts.card;
-        const pulseBlue = isActive || (isPulse && pulseColor !== "gold");
-        const pulseGold = isPulse && pulseColor === "gold";
         const pulsing = isActive || isPulse;
 
-        // Remember last pulse color so fade-out keeps the right hue
+        // Pick color: active always blue; pulse uses provided; otherwise reuse memory for fade-out only
+        let colorClass = null;
         if (isPulse) {
-            cardParts.lastPulseColor = pulseGold ? "gold" : "blue";
+            colorClass = pulseColor === "gold" ? "gold" : "blue";
+            cardParts.lastPulseColor = colorClass;
+        } else if (isActive) {
+            colorClass = "blue";
+        } else if (cardParts.lastPulseColor) {
+            colorClass = cardParts.lastPulseColor;
         }
-        const colorFromMemory = cardParts.lastPulseColor;
-        const useGold = pulseGold || colorFromMemory === "gold";
-        const useBlue = (pulseBlue && !pulseGold) || colorFromMemory === "blue";
+
+        const useGold = colorClass === "gold";
+        const useBlue = colorClass === "blue";
 
         card.classList.toggle("active", isActive);
         card.classList.toggle("pulse", pulsing);
