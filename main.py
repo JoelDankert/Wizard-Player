@@ -390,7 +390,8 @@ def apply_game_step(players, gm, goals, reached):
     else:
         # Zielansage
         goals[idx] = int(token[1:] or 0)
-        push_event_token("{spieler} zielt " + str(goals[idx]) + " Stiche an", "gray", players, idx)
+        label = "Stich" if goals[idx] == 1 else "Stiche"
+        push_event_token(f"{{spieler}} zielt {goals[idx]} {label} an", "gray", players, idx)
         set_wait(False)
         return idx
 
@@ -613,7 +614,8 @@ def gameplay_loop(name):
             # number of spaces is the intended tricks; empty line means 0
             spaces = len(inp_raw)  # inp_raw still has the spaces
             goals[autoselect_idx] = spaces
-            push_event_token("{spieler} zielt " + str(spaces) + " Stiche an", "gray", players, autoselect_idx)
+            label = "Stich" if spaces == 1 else "Stiche"
+            push_event_token(f"{{spieler}} zielt {spaces} {label} an", "gray", players, autoselect_idx)
             set_wait(False)
             set_active_index(autoselect_idx)
             mark_goal_set(autoselect_idx, players)
