@@ -213,7 +213,7 @@ function getPlayerCard(key){
     box.append(stats, avatarEl);
     card.append(nameEl, box);
 
-    entry = { card, nameEl, fractionEl, roundpointsEl, avatarEl };
+    entry = { card, nameEl, fractionEl, roundpointsEl, avatarEl, lastPulseColor: null };
     playerCardCache.set(key, entry);
     return entry;
 }
@@ -453,10 +453,18 @@ function render(state){
         const pulseGold = isPulse && pulseColor === "gold";
         const pulsing = isActive || isPulse;
 
+        // Remember last pulse color so fade-out keeps the right hue
+        if (isPulse) {
+            cardParts.lastPulseColor = pulseGold ? "gold" : "blue";
+        }
+        const colorFromMemory = cardParts.lastPulseColor;
+        const useGold = pulseGold || colorFromMemory === "gold";
+        const useBlue = (pulseBlue && !pulseGold) || colorFromMemory === "blue";
+
         card.classList.toggle("active", isActive);
         card.classList.toggle("pulse", pulsing);
-        card.classList.toggle("pulse-blue", pulseBlue);
-        card.classList.toggle("pulse-gold", pulseGold);
+        card.classList.toggle("pulse-blue", useBlue);
+        card.classList.toggle("pulse-gold", useGold);
         card.style.order = idx; // keep visual order without reparenting
 
         if (!card.parentNode) {
