@@ -1,0 +1,18 @@
+x 🤖Joel
+t 👲Tini
+m 🫡Martin
+j 🦌Jörg
+i 🧚Ingrid
+
+x20 t20 m20 j30 i20
+x20 t20 m20 j-10 i-10
+x30 t30 m20 j20 i30
+x30 t30 m-10 j20 i30
+x20 t-10 m-10 j-10 i30
+x30 t40 m-10 j-10 i20
+x30 t50 m30 j20 i40
+x20 t50 m40 j30 i40
+x40 t-10 m30 j30 i-10
+x30 t30 m-10 j50 i60
+x-20 t60 m40 j20 i20
+x60 t60 m-10 j30 i-20
