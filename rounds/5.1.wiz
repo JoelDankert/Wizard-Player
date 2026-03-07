@@ -2,5 +2,16 @@ x 🤖Joel
 g 🥗Gabi
 l 🎀Lisa
 r 🌎Ricky
+j 🦌Jörg
 i 🧚Ingrid
 
+x20 g30 l20 r20 j-10 i20
+x30 g30 l20 r20 j20 i20
+x30 g20 l20 r20 j20 i-10
+x30 g20 l30 r-10 j20 i20
+x20 g30 l30 r20 j-10 i-10
+x20 g20 l20 r-10 j-10 i50
+x20 g40 l-10 r30 j30 i30
+x20 g20 l40 r60 j-20 i-20
+x40 g20 l40 r30 j-10 i-10
+x20 g40 l60 r20 j-10 i60
