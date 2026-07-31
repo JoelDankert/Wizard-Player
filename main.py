@@ -42,6 +42,7 @@ _command_queue = Queue()
 _stdin_reader_started = False
 _active_idx = None
 _highlight_on = True
+_manual_mark_on = False
 _goal_set_flags = []
 _pulse_info = None
 
@@ -191,6 +192,11 @@ def set_highlight(flag: bool):
         _highlight_on = bool(flag)
         WEB_STATE["highlight"] = _highlight_on
 
+def set_manual_mark(flag: bool):
+    global _manual_mark_on
+    _manual_mark_on = bool(flag)
+    set_highlight(_manual_mark_on)
+
 def set_pulse(idx=None, color=None, duration=5):
     """Set a temporary pulse highlight for a player."""
     global _pulse_info
@@ -205,6 +211,7 @@ def set_pulse(idx=None, color=None, duration=5):
 
 def reset_goal_flags(players):
     global _goal_set_flags
+    set_manual_mark(False)
     _goal_set_flags = [False for _ in players]
     set_highlight(False)
 
@@ -218,7 +225,7 @@ def mark_goal_set(idx, players):
         _goal_set_flags[idx] = True
     if not _highlight_on:
         set_highlight(True)
-    if all(_goal_set_flags) and _goal_set_flags:
+    if all(_goal_set_flags) and _goal_set_flags and not _manual_mark_on:
         set_highlight(False)
 
 def is_wait_active():
@@ -385,7 +392,8 @@ def apply_game_step(players, gm, goals, reached):
         push_event(text, "gold", particles=particles)   # <--- hier Flag setzen
         set_wait(False)
         set_pulse(idx, "gold", duration=5)
-        set_highlight(False)
+        if not _manual_mark_on:
+            set_highlight(False)
 
     else:
         # Zielansage
@@ -683,10 +691,13 @@ def gameplay_loop(name):
                 if tgt_idx != -1:
                     autoselect_idx = tgt_idx
                     set_active_index(autoselect_idx)
-                    set_highlight(True)
+                    set_manual_mark(True)
                     update_web_state(i, players, goals, reached)
                     continue
-            set_highlight(not _highlight_on)
+            if _highlight_on and not _manual_mark_on:
+                set_highlight(False)
+            else:
+                set_manual_mark(not _manual_mark_on)
             set_active_index(autoselect_idx)
             update_web_state(i, players, goals, reached)
             continue

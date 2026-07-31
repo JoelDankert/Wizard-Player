@@ -451,13 +451,13 @@ function render(state){
         const card = cardParts.card;
         const pulsing = isActive || isPulse;
 
-        // Pick color: active always blue; pulse uses provided; otherwise reuse memory for fade-out only
+        // Pick color: active always blue; event pulse uses provided color for non-active cards.
         let colorClass = null;
-        if (isPulse) {
+        if (isActive) {
+            colorClass = "blue";
+        } else if (isPulse) {
             colorClass = pulseColor === "gold" ? "gold" : "blue";
             cardParts.lastPulseColor = colorClass;
-        } else if (isActive) {
-            colorClass = "blue";
         } else if (cardParts.lastPulseColor) {
             colorClass = cardParts.lastPulseColor;
         }
